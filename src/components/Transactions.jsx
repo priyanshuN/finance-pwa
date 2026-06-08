@@ -4,6 +4,7 @@ import { filterByMonth, formatDate, formatINRFull, CATEGORY_COLORS } from '../li
 export default function Transactions({ transactions, month }) {
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
+  const [expanded, setExpanded] = useState(null)
 
   const filtered = useMemo(() => {
     let t = filterByMonth(transactions, month)
@@ -61,32 +62,62 @@ export default function Transactions({ transactions, month }) {
         {filtered.length === 0 && (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>No transactions found</div>
         )}
-        {filtered.map((t, i) => (
-          <div key={t.message_id || i} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 16px',
-            borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-          }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-              background: CATEGORY_COLORS[t.category] || '#a0aec0',
-            }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t.vendor}
+        {filtered.map((t, i) => {
+          const key = t.message_id || i
+          const isOpen = expanded === key
+          return (
+            <div
+              key={key}
+              onClick={() => setExpanded(isOpen ? null : key)}
+              style={{
+                padding: '12px 16px',
+                borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: CATEGORY_COLORS[t.category] || '#a0aec0',
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {t.vendor}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+                    {formatDate(t.date)} · {t.category} · {t.account_type}
+                  </div>
+                </div>
+                <div className="mono" style={{
+                  fontSize: 13, fontWeight: 500, flexShrink: 0,
+                  color: t.direction === 'credit' ? 'var(--green)' : 'inherit',
+                }}>
+                  {t.direction === 'credit' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                {formatDate(t.date)} · {t.category} · {t.account_type}
-              </div>
+              {isOpen && (
+                <div style={{
+                  marginTop: 10, marginLeft: 20,
+                  background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px',
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px',
+                }}>
+                  {[
+                    ['Full amount', `₹${t.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+                    ['Date', formatDate(t.date)],
+                    ['Category', t.category],
+                    ['Payment', t.account_type],
+                    ['Type', t.direction],
+                  ].map(([label, val]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{label}</div>
+                      <div className="mono" style={{ fontSize: 12, marginTop: 1 }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="mono" style={{
-              fontSize: 13, fontWeight: 500, flexShrink: 0,
-              color: t.direction === 'credit' ? 'var(--green)' : 'inherit',
-            }}>
-              {t.direction === 'credit' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
