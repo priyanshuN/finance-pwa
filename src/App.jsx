@@ -73,6 +73,7 @@ export default function App() {
           {months.map(m => (
             <button key={m} onClick={() => setMonth(m)} style={pillStyle(month === m)}>
               {new Date(m + '-01').toLocaleString('default', { month: 'short' })}
+              {isCurrentMonth(m) ? ' •' : ''}
             </button>
           ))}
         </div>
@@ -81,7 +82,7 @@ export default function App() {
       {/* Last sync */}
       {lastSync && (
         <div style={{ fontSize: 10, color: 'var(--muted)', padding: '4px 16px 0', textAlign: 'right' }}>
-          Synced {lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          Synced {timeSince(lastSync)}
         </div>
       )}
 
@@ -113,7 +114,7 @@ export default function App() {
             transition: 'color 0.15s',
           }}>
             <span style={{ fontSize: 16 }}>{n.icon}</span>
-            <span style={{ fontSize: 9, fontFamily: 'Syne, sans-serif', fontWeight: tab === n.id ? 600 : 400 }}>{n.label}</span>
+            <span style={{ fontSize: 10, fontFamily: 'Syne, sans-serif', fontWeight: tab === n.id ? 600 : 400 }}>{n.label}</span>
           </button>
         ))}
       </div>
@@ -121,6 +122,18 @@ export default function App() {
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>
   )
+}
+
+function isCurrentMonth(m) {
+  const now = new Date()
+  return m === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function timeSince(date) {
+  const s = Math.floor((Date.now() - date) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 }
 
 function pillStyle(active) {

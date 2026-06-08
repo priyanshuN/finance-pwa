@@ -31,8 +31,28 @@ export default function Trends({ transactions }) {
     borderRadius: 8, fontSize: 11,
   }
 
+  const totalAllTime = debits.reduce((s, t) => s + t.amount, 0)
+  const avgMonthly   = monthly.length ? Math.round(totalAllTime / monthly.length) : 0
+
   return (
     <div style={{ paddingBottom: 32 }}>
+
+      {/* All-time summary */}
+      <div style={{
+        margin: '16px 16px 0',
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 20, padding: '20px',
+        display: 'flex', gap: 12,
+      }} className="fade-up">
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>All-time spend</div>
+          <div className="mono" style={{ fontSize: 28, fontWeight: 500, marginTop: 4 }}>{formatINRFull(totalAllTime)}</div>
+        </div>
+        <div style={{ flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: 16 }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Monthly avg</div>
+          <div className="mono" style={{ fontSize: 28, fontWeight: 500, marginTop: 4 }}>{formatINRFull(avgMonthly)}</div>
+        </div>
+      </div>
 
       {/* Month over month line */}
       <div style={{ margin: '16px 16px 0', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '16px 12px 8px' }}>
