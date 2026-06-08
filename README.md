@@ -23,7 +23,7 @@ Settings → Environment Variables → add:
 
 | Key | Value |
 |-----|-------|
-| `SHEET_ID` | `YOUR_SHEET_ID_HERE` |
+| `SHEET_ID` | Your Google Sheet ID (from the URL) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Paste full contents of your service account JSON key |
 
 ### 4. Deploy
