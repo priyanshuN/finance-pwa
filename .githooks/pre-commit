@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -e
+
+STAGED=$(git diff --cached --name-only)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+FAIL=0
+
+# Block .env files (anything except .env.example)
+for f in $STAGED; do
+  if echo "$f" | grep -qE '\.env(\.|$)' && [ "$f" != ".env.example" ]; then
+    echo "SECRET SCAN: refusing to commit env file: $f"
+    FAIL=1
+  fi
+done
+
+# Scan file contents for secret patterns
+for f in $STAGED; do
+  [ -f "$f" ] || continue
+
+  content=$(git show ":$f" 2>/dev/null) || continue
+
+  # Private keys
+  if echo "$content" | grep -qE -e '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'; then
+    echo "SECRET SCAN: private key detected in $f"
+    FAIL=1
+  fi
+
+  # Google service account private_key with real value (not placeholder)
+  if echo "$content" | grep -qE -e '"private_key"[[:space:]]*:[[:space:]]*"-----BEGIN'; then
+    echo "SECRET SCAN: Google service account key detected in $f"
+    FAIL=1
+  fi
+
+  # Google API keys
+  if echo "$content" | grep -qE 'AIza[0-9A-Za-z_-]{35}'; then
+    echo "SECRET SCAN: Google API key detected in $f"
+    FAIL=1
+  fi
+
+  # Generic high-entropy tokens (Bearer, sk-, ghp_, etc.)
+  if echo "$content" | grep -qE '(ghp_|ghs_|github_pat_)[A-Za-z0-9_]{20,}'; then
+    echo "SECRET SCAN: GitHub token detected in $f"
+    FAIL=1
+  fi
+done
+
+if [ "$FAIL" -eq 1 ]; then
+  echo ""
+  echo "Commit blocked. Remove the secrets and try again."
+  echo "If this is a false positive, use: git commit --no-verify"
+  exit 1
+fi
+
+exit 0
