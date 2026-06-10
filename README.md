@@ -1,6 +1,6 @@
 # Finance Tracker PWA
 
-A personal finance dashboard that reads SMS-parsed transactions from a Google Sheet and presents them as a mobile-first PWA. No backend database — Google Sheets is the source of truth.
+A personal finance dashboard that reads transactions from a Google Sheet and presents them as a mobile-first PWA. No backend database — Google Sheets is the source of truth.
 
 ## What it looks like
 
@@ -11,10 +11,12 @@ Installable on iPhone via Safari → Share → Add to Home Screen.
 ## How it works
 
 ```
-SMS on phone → parsing script → Google Sheet → /api/transactions → React app
+your ingestion pipeline → Google Sheet → /api/transactions → React app
 ```
 
-The Vercel serverless function at `api/transactions.js` reads your Google Sheet using a service account and returns parsed transactions. The frontend caches nothing — every sync hits the API (which is edge-cached for 5 minutes).
+The app only cares about the Google Sheet — how you populate it is up to you. The Vercel serverless function at `api/transactions.js` reads the sheet using a service account and returns parsed transactions. The frontend caches nothing — every sync hits the API (which is edge-cached for 5 minutes).
+
+The ingestion side can be anything: a Google Apps Script that parses bank emails, a script that reads SMS exports, a manual CSV import, etc. As long as rows land in the sheet with the structure below, the dashboard works.
 
 ---
 
