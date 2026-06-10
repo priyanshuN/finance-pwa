@@ -41,9 +41,27 @@ for f in $STAGED; do
     FAIL=1
   fi
 
-  # Generic high-entropy tokens (Bearer, sk-, ghp_, etc.)
+  # GitHub tokens
   if echo "$content" | grep -qE '(ghp_|ghs_|github_pat_)[A-Za-z0-9_]{20,}'; then
     echo "SECRET SCAN: GitHub token detected in $f"
+    FAIL=1
+  fi
+
+  # Anthropic / Claude API keys
+  if echo "$content" | grep -qE 'sk-ant-[A-Za-z0-9_-]{20,}'; then
+    echo "SECRET SCAN: Anthropic API key detected in $f"
+    FAIL=1
+  fi
+
+  # OpenAI API keys (classic sk- and newer sk-proj-)
+  if echo "$content" | grep -qE 'sk-(proj-)?[A-Za-z0-9]{40,}'; then
+    echo "SECRET SCAN: OpenAI API key detected in $f"
+    FAIL=1
+  fi
+
+  # OpenRouter API keys
+  if echo "$content" | grep -qE 'sk-or-v1-[A-Za-z0-9_-]{20,}'; then
+    echo "SECRET SCAN: OpenRouter API key detected in $f"
     FAIL=1
   fi
 done
