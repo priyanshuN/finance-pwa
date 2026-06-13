@@ -24,7 +24,7 @@ const NAV = [
 export default function App() {
   const { data, loading, error, lastSync, refetch } = useTransactions()
   const { toasts, toast, dismiss } = useToast()
-  const { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, runRecategorize } = useAliasRules(toast)
+  const { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, acceptAllLlmRules, runRecategorize } = useAliasRules(toast)
   const [tab, setTab]     = useState('overview')
   const [month, setMonth] = useState('')
 
@@ -111,7 +111,7 @@ export default function App() {
           {tab === 'recurring'    && <Recurring transactions={transactions} />}
           {tab === 'trends'       && <Trends transactions={transactions} />}
           {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
-          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} />}
+          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} onAcceptAllLlmRules={acceptAllLlmRules} />}
         </Suspense>
       </div>
 

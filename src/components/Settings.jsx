@@ -6,7 +6,7 @@ import { CATEGORY_COLORS } from '../lib/utils'
 
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 
-export default function Settings({ transactions, month, onRefetch, toast, rules, onAddRule, onRemoveRule, llmRules, onAcceptLlmRule, onRemoveLlmRule }) {
+export default function Settings({ transactions, month, onRefetch, toast, rules, onAddRule, onRemoveRule, llmRules, onAcceptLlmRule, onRemoveLlmRule, onAcceptAllLlmRules }) {
   const { budgets, clearAll } = useBudget()
   const budgetCount = Object.keys(budgets).length
   const [vendor, setVendor] = useState('')
@@ -216,8 +216,20 @@ export default function Settings({ transactions, month, onRefetch, toast, rules,
       {/* AI Suggested Rules */}
       {llmRules && llmRules.length > 0 && (
         <div style={{ margin: '16px 16px 0' }} className="fade-up">
-          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-            AI Suggested
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              AI Suggested
+            </div>
+            <button
+              onClick={() => { onAcceptAllLlmRules(); toast(`Accepted ${llmRules.length} suggestion${llmRules.length === 1 ? '' : 's'}`, 'success') }}
+              style={{
+                background: 'none', border: '1px solid var(--border)', cursor: 'pointer',
+                color: 'var(--green)', fontSize: 11, padding: '3px 10px', borderRadius: 6,
+                fontFamily: 'Syne, sans-serif', fontWeight: 500,
+              }}
+            >
+              Accept all
+            </button>
           </div>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
             {llmRules.map((rule, i) => (

@@ -90,6 +90,18 @@ export function useAliasRules(toast) {
     }
   }
 
+  // Promote all LLM suggestions to permanent user rules in one write
+  async function acceptAllLlmRules() {
+    const promoted = llmRules.map(r => ({ id: Date.now() + Math.random(), vendor: r.vendor, category: r.category, source: 'user' }))
+    const next = [...rules, ...promoted]
+    setAndCache(next)
+    try {
+      await persistRules(next)
+    } catch {
+      toast?.('Rules saved locally — sync to sheet failed', 'error')
+    }
+  }
+
   async function runRecategorize(transactions) {
     try {
       const res = await fetch('/api/recategorize', {
@@ -107,5 +119,5 @@ export function useAliasRules(toast) {
     }
   }
 
-  return { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, runRecategorize }
+  return { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, acceptAllLlmRules, runRecategorize }
 }
