@@ -69,27 +69,27 @@ gh pr merge $PR --merge --delete-branch
 ```
 
 ### 4. Bump version + update CHANGELOG.md
+**Rule: never touch `package.json` version or CHANGELOG on feature PRs. Only update them here, right before tagging.**
+
 - `main` is branch-protected — never commit directly.
-- Create a dedicated branch, bump `package.json` version to X.Y.Z, add the CHANGELOG entry, commit, push, raise a PR, and merge it.
+- Create a dedicated branch, bump `package.json` version to X.Y.Z, add the CHANGELOG entry, commit both together, raise a PR, and merge it.
 
 ```bash
 git checkout main && git pull origin main
 git checkout -b chore/changelog-vX.Y.Z
 
-# 1. Bump version in package.json to X.Y.Z
-# 2. Add CHANGELOG entry at the top:
-# Edit CHANGELOG.md — add new section above the previous latest version:
+# 1. Bump "version" in package.json to X.Y.Z
+# 2. Add CHANGELOG entry at the top of CHANGELOG.md:
 # ## vX.Y.Z — YYYY-MM-DD
-#
 # ### Fixed / Added / Changed
 # - ...
 
 git add package.json CHANGELOG.md
-git commit -m "chore: bump version to vX.Y.Z and add CHANGELOG entry"
+git commit -m "chore: bump version to X.Y.Z and add CHANGELOG entry"
 git push origin chore/changelog-vX.Y.Z
 
 gh pr create --base main --head chore/changelog-vX.Y.Z \
-  --title "docs: add CHANGELOG entry for vX.Y.Z" \
+  --title "chore: bump version to X.Y.Z and add CHANGELOG entry" \
   --body "Automated PR — summary will be posted as a comment."
 
 gh pr merge <PR> --merge --delete-branch
@@ -97,6 +97,7 @@ gh pr merge <PR> --merge --delete-branch
 ```
 
 ### 5. Tag the release
+**Tag always points to the commit that has the version bump. Pull main first.**
 ```bash
 git checkout main && git pull origin main
 git tag vX.Y.Z

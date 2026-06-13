@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.1 — 2026-06-13
+
+### Fixed
+- Recategorization now uses Claude Sonnet 4.6 (via OpenRouter) which returns clean JSON without markdown fences, resolving the empty suggestions bug.
+- Chat assistant messages now render markdown (bold, lists, inline code) using `react-markdown`.
+- `package.json` version kept in sync with release tags going forward.
+
+---
+
 ## v1.2.0 — 2026-06-13
 
 ### Added
