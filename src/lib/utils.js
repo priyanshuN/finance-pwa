@@ -82,23 +82,48 @@ export function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
-export function detectRecurring(transactions) {
+export function getRecurringSummary(transactions) {
   const byVendor = {}
   for (const t of transactions) {
     if (t.direction !== 'debit') continue
     if (!byVendor[t.vendor]) byVendor[t.vendor] = []
     byVendor[t.vendor].push(t)
   }
-  const recurring = new Set()
-  for (const [, txns] of Object.entries(byVendor)) {
+
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  const summary = []
+  for (const [vendor, txns] of Object.entries(byVendor)) {
     const months = new Set(txns.map(t => t.date.slice(0, 7)))
     if (months.size < 2) continue
     const amounts = txns.map(t => t.amount)
     const avg = amounts.reduce((s, a) => s + a, 0) / amounts.length
     const variance = (Math.max(...amounts) - Math.min(...amounts)) / avg
-    if (variance <= 0.2) txns.forEach(t => recurring.add(t.message_id))
+    if (variance > 0.2) continue
+
+    const paidThisMonth = txns.some(t => t.date.startsWith(currentMonth))
+    const lastTxn = [...txns].sort((a, b) => b.date.localeCompare(a.date))[0]
+    summary.push({
+      vendor,
+      category: lastTxn.category,
+      typicalAmount: Math.round(avg),
+      months: [...months].sort(),
+      paidThisMonth,
+      lastPaid: lastTxn.date,
+    })
   }
-  return recurring
+  return summary.sort((a, b) => b.typicalAmount - a.typicalAmount)
+}
+
+export function detectRecurring(transactions) {
+  const summary = getRecurringSummary(transactions)
+  const recurringVendors = new Set(summary.map(s => s.vendor))
+  const ids = new Set()
+  for (const t of transactions) {
+    if (recurringVendors.has(t.vendor)) ids.add(t.message_id)
+  }
+  return ids
 }
 
 export function applyAliasRules(transactions, rules) {

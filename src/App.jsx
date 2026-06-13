@@ -7,6 +7,7 @@ import ToastContainer from './components/common/Toast'
 
 const Overview     = lazy(() => import('./components/Overview'))
 const Transactions = lazy(() => import('./components/Transactions'))
+const Recurring    = lazy(() => import('./components/Recurring'))
 const Trends       = lazy(() => import('./components/Trends'))
 const Budget       = lazy(() => import('./components/Budget'))
 const Settings     = lazy(() => import('./components/Settings'))
@@ -14,6 +15,7 @@ const Settings     = lazy(() => import('./components/Settings'))
 const NAV = [
   { id: 'overview',     label: 'Overview',      icon: '◈' },
   { id: 'transactions', label: 'Transactions',   icon: '≡' },
+  { id: 'recurring',    label: 'Recurring',      icon: '↻' },
   { id: 'trends',       label: 'Trends',         icon: '↗' },
   { id: 'budget',       label: 'Budget',         icon: '◎' },
   { id: 'settings',     label: 'Settings',       icon: '⚙' },
@@ -34,7 +36,7 @@ export default function App() {
     if (months.length && !month) setMonth(months[months.length - 1])
   }, [months])
 
-  const title = { overview: 'Overview', transactions: 'Transactions', trends: 'Trends', budget: 'Budget', settings: 'Settings' }
+  const title = { overview: 'Overview', transactions: 'Transactions', recurring: 'Recurring', trends: 'Trends', budget: 'Budget', settings: 'Settings' }
 
   if (loading) return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -96,6 +98,7 @@ export default function App() {
         <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
           {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
           {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} />}
+          {tab === 'recurring'    && <Recurring transactions={transactions} />}
           {tab === 'trends'       && <Trends transactions={transactions} />}
           {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
           {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} />}
