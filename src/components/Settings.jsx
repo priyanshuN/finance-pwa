@@ -6,7 +6,7 @@ import { CATEGORY_COLORS } from '../lib/utils'
 
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 
-export default function Settings({ transactions, month, onRefetch, toast, rules, onAddRule, onRemoveRule }) {
+export default function Settings({ transactions, month, onRefetch, toast, rules, onAddRule, onRemoveRule, llmRules, onAcceptLlmRule, onRemoveLlmRule }) {
   const { budgets, clearAll } = useBudget()
   const budgetCount = Object.keys(budgets).length
   const [vendor, setVendor] = useState('')
@@ -212,6 +212,53 @@ export default function Settings({ transactions, month, onRefetch, toast, rules,
           )}
         </div>
       </div>
+
+      {/* AI Suggested Rules */}
+      {llmRules && llmRules.length > 0 && (
+        <div style={{ margin: '16px 16px 0' }} className="fade-up">
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            AI Suggested
+          </div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+            {llmRules.map((rule, i) => (
+              <div key={rule.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 16px',
+                borderBottom: i < llmRules.length - 1 ? '1px solid var(--border)' : 'none',
+              }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                  background: CATEGORY_COLORS[rule.category] || '#a0aec0',
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{rule.vendor}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)', margin: '0 6px' }}>→</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{rule.category}</span>
+                </div>
+                <button
+                  onClick={() => { onAcceptLlmRule(rule); toast(`"${rule.vendor}" → ${rule.category}`, 'success') }}
+                  style={{
+                    background: 'none', border: '1px solid var(--border)', cursor: 'pointer',
+                    color: 'var(--green)', fontSize: 11, padding: '3px 8px', borderRadius: 6,
+                    fontFamily: 'Syne, sans-serif', fontWeight: 500, flexShrink: 0,
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() => { onRemoveLlmRule(rule.id); toast('Suggestion dismissed', 'info') }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--muted)', fontSize: 18, lineHeight: 1, padding: '2px 4px',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

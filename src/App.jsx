@@ -24,13 +24,23 @@ const NAV = [
 export default function App() {
   const { data, loading, error, lastSync, refetch } = useTransactions()
   const { toasts, toast, dismiss } = useToast()
-  const { rules, addRule, removeRule } = useAliasRules(toast)
+  const { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, runRecategorize } = useAliasRules(toast)
   const [tab, setTab]     = useState('overview')
   const [month, setMonth] = useState('')
 
   const months = useMemo(() => data ? getMonths(data) : [], [data])
-  const transactions = useMemo(() => data ? applyAliasRules(data, rules) : data, [data, rules])
+  // User rules take priority (first match wins in applyAliasRules)
+  const transactions = useMemo(() => data ? applyAliasRules(data, [...rules, ...llmRules]) : data, [data, rules, llmRules])
   const recurringIds = useMemo(() => transactions ? detectRecurring(transactions) : new Set(), [transactions])
+
+  const hasRecategorized = React.useRef(false)
+  React.useEffect(() => {
+    if (!data || hasRecategorized.current) return
+    hasRecategorized.current = true
+    runRecategorize(data).then(count => {
+      if (count > 0) toast(`AI suggested ${count} new categor${count === 1 ? 'y' : 'ies'}`, 'success')
+    })
+  }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (months.length && !month) setMonth(months[months.length - 1])
@@ -101,7 +111,7 @@ export default function App() {
           {tab === 'recurring'    && <Recurring transactions={transactions} />}
           {tab === 'trends'       && <Trends transactions={transactions} />}
           {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
-          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} />}
+          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} />}
         </Suspense>
       </div>
 
