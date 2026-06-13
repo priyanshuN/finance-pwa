@@ -94,15 +94,10 @@ export default async function handler(req, res) {
     const client = getClient();
     const completion = await client.chat.completions.create({
       model: 'anthropic/claude-haiku-4-5',
-      response_format: { type: 'json_object' },
       messages: [
         {
-          role: 'system',
-          content: `You are a personal finance assistant for an Indian user. Classify each vendor into exactly one category from this list:\n${CATEGORIES.join(', ')}\n\nRespond with JSON: {"rules": [{"vendor": "...", "category": "..."}, ...]}`,
-        },
-        {
           role: 'user',
-          content: `Classify these vendors:\n${vendorList}`,
+          content: `You are a personal finance assistant for an Indian user. Classify each vendor into exactly one category from this list:\n${CATEGORIES.join(', ')}\n\nReturn ONLY a JSON object in this exact format, no explanation:\n{"rules": [{"vendor": "...", "category": "..."}, ...]}\n\nVendors to classify:\n${vendorList}`,
         },
       ],
       max_tokens: 2000,
@@ -110,8 +105,13 @@ export default async function handler(req, res) {
 
     let mappings = [];
     try {
-      const parsed = JSON.parse(completion.choices[0].message.content);
-      mappings = Array.isArray(parsed.rules) ? parsed.rules : [];
+      const text = completion.choices[0].message.content || '';
+      // Extract JSON object from response (handles markdown code blocks too)
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        mappings = Array.isArray(parsed.rules) ? parsed.rules : [];
+      }
     } catch {
       mappings = [];
     }
