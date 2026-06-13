@@ -96,8 +96,12 @@ export default async function handler(req, res) {
       model: 'anthropic/claude-haiku-4-5',
       messages: [
         {
+          role: 'system',
+          content: `You are a personal finance classifier. You output raw JSON only — no markdown, no code fences, no explanation. Valid categories: ${CATEGORIES.join(', ')}. Output format: {"rules":[{"vendor":"...","category":"..."}]}`,
+        },
+        {
           role: 'user',
-          content: `You are a personal finance assistant for an Indian user. Classify each vendor into exactly one category from this list:\n${CATEGORIES.join(', ')}\n\nReturn ONLY a JSON object in this exact format, no explanation:\n{"rules": [{"vendor": "...", "category": "..."}, ...]}\n\nVendors to classify:\n${vendorList}`,
+          content: `Classify these vendors:\n${vendorList}`,
         },
       ],
       max_tokens: 2000,
