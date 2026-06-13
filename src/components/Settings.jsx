@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { version } from '../../package.json'
 import { useBudget } from '../hooks/useBudget'
 import { exportTransactions } from '../lib/export'
 import { CATEGORY_COLORS } from '../lib/utils'
@@ -74,7 +75,7 @@ export default function Settings({ transactions, month, onRefetch, toast, rules,
     {
       section: 'About',
       items: [
-        { label: 'Finance Tracker', sub: 'Personal PWA · v1.0', icon: '💰', action: null },
+        { label: 'Finance Tracker', sub: `Personal PWA · v${version}`, icon: '💰', action: null },
         { label: 'Data source', sub: 'Google Sheets via Vercel', icon: '📊', action: null },
       ],
     },
