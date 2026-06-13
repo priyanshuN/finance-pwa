@@ -40,7 +40,7 @@ export default function Overview({ transactions, month }) {
   const debits       = useMemo(() => getDebits(filtered), [filtered])
   const credits      = useMemo(() => getCredits(filtered), [filtered])
   const cats         = useMemo(() => groupByCategory(debits), [debits])
-  const monthly      = useMemo(() => monthlyTotals(transactions), [transactions])
+  const monthly      = useMemo(() => monthlyTotals(transactions), [transactions]) // used by all-time bar chart
   const totalSpend   = sumAmount(debits)
   const totalCredit  = sumAmount(credits)
   const net          = totalCredit - totalSpend
@@ -51,13 +51,14 @@ export default function Overview({ transactions, month }) {
   [budgets])
 
   const momDelta = useMemo(() => {
-    if (!month || monthly.length < 2) return null
-    const idx = monthly.findIndex(m => m.month === month)
-    if (idx < 1) return null
-    const prev = monthly[idx - 1].total
-    if (!prev) return null
-    return ((totalSpend - prev) / prev) * 100
-  }, [month, monthly, totalSpend])
+    if (!month) return null
+    const [yr, mo] = month.split('-')
+    const prevDate = new Date(parseInt(yr), parseInt(mo) - 2, 1)
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`
+    const prevSpend = sumAmount(getDebits(filterByMonth(transactions, prevMonth)))
+    if (!prevSpend) return null
+    return ((totalSpend - prevSpend) / prevSpend) * 100
+  }, [month, transactions, totalSpend])
 
   const recentSorted = useMemo(() =>
     [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10),
