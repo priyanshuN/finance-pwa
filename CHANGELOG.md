@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.1 — 2026-06-13
+
+### Fixed
+- About section in Settings now shows version dynamically from `package.json` — no manual update needed on each release.
+- Bumped `package.json` version to 1.1.0 to match v1.1.0 release.
+
+---
+
 ## v1.1.0 — 2026-06-13
 
 ### Added
