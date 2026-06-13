@@ -21,18 +21,18 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: RULES_SHEET_ID,
-        range: `${SHEET_NAME}!A:B`,
+        range: `${SHEET_NAME}!A:C`,
       });
 
       const rows = response.data.values || [];
       const data = rows.slice(1).filter(r => r[0] && r[1]);
-      const rules = data.map((r, i) => ({ id: i + 1, vendor: r[0], category: r[1] }));
+      const rules = data.map((r, i) => ({ id: i + 1, vendor: r[0], category: r[1], source: r[2] || 'user' }));
       return res.json({ rules });
     }
 
     if (req.method === 'POST') {
       const { rules } = req.body;
-      const values = [['vendor', 'category'], ...rules.map(r => [r.vendor, r.category])];
+      const values = [['vendor', 'category', 'source'], ...rules.map(r => [r.vendor, r.category, r.source || 'user'])];
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: RULES_SHEET_ID,
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       const clearStart = values.length + 1;
       await sheets.spreadsheets.values.clear({
         spreadsheetId: RULES_SHEET_ID,
-        range: `${SHEET_NAME}!A${clearStart}:B1000`,
+        range: `${SHEET_NAME}!A${clearStart}:C1000`,
       });
 
       return res.json({ ok: true });

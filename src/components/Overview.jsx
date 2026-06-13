@@ -1,9 +1,19 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 import {
   filterByMonth, getDebits, getCredits, sumAmount,
   groupByCategory, monthlyTotals, formatINR, formatINRFull, formatDate
 } from '../lib/utils'
+
+function buildDigestSummary(debits, credits, cats, month) {
+  const period = month
+    ? new Date(month + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })
+    : 'all time'
+  return `Period: ${period}
+Total spend: ${formatINRFull(sumAmount(debits))} (${debits.length} transactions)
+Total credited: ${formatINRFull(sumAmount(credits))}
+Top categories: ${cats.slice(0, 6).map(c => `${c.name} ${formatINRFull(c.value)}`).join(', ')}`
+}
 
 export default function Overview({ transactions, month }) {
   const filtered  = useMemo(() => filterByMonth(transactions, month), [transactions, month])
@@ -14,6 +24,29 @@ export default function Overview({ transactions, month }) {
   const totalSpend = sumAmount(debits)
   const totalCredit = sumAmount(credits)
   const recent    = [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
+
+  const [digest, setDigest] = useState(null)
+  const [digestLoading, setDigestLoading] = useState(false)
+
+  useEffect(() => { setDigest(null) }, [month])
+
+  async function fetchDigest() {
+    setDigestLoading(true)
+    try {
+      const summary = buildDigestSummary(debits, credits, cats, month)
+      const res = await fetch('/api/digest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary }),
+      })
+      const json = await res.json()
+      if (json.digest) setDigest(json.digest)
+    } catch {
+      // silently fail
+    } finally {
+      setDigestLoading(false)
+    }
+  }
 
   const topCat = cats[0]
   const upiSpend = sumAmount(debits.filter(t => t.account_type === 'UPI'))
@@ -60,6 +93,54 @@ export default function Overview({ transactions, month }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* AI Digest */}
+      <div style={{
+        margin: '12px 16px 0',
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 20, padding: '14px 16px',
+      }} className="fade-up">
+        {digest ? (
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              AI Digest
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{digest}</div>
+            <button
+              onClick={() => { setDigest(null); fetchDigest() }}
+              style={{
+                marginTop: 10, background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--muted)', fontSize: 11, fontFamily: 'Syne, sans-serif', padding: 0,
+              }}
+            >
+              ↺ Regenerate
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={fetchDigest}
+            disabled={digestLoading || debits.length === 0}
+            style={{
+              width: '100%', background: 'none', border: 'none', cursor: debits.length > 0 ? 'pointer' : 'default',
+              display: 'flex', alignItems: 'center', gap: 10, padding: 0,
+              opacity: debits.length === 0 ? 0.4 : 1,
+            }}
+          >
+            <div style={{
+              width: 32, height: 32, borderRadius: 9, background: 'var(--surface2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
+            }}>
+              {digestLoading ? '···' : '◌'}
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>
+                {digestLoading ? 'Summarising…' : 'Summarise this month'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>AI-generated spending digest</div>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Monthly bar chart */}

@@ -21,22 +21,35 @@ async function persistRules(rules) {
 }
 
 export function useAliasRules(toast) {
-  const [rules, setRules] = useState(() => storageGet(KEY, []))
+  const [allRules, setAllRules] = useState(() => storageGet(KEY, []))
+
+  const rules = allRules.filter(r => r.source !== 'llm')
+  const llmRules = allRules.filter(r => r.source === 'llm')
+
+  function setAndCache(next) {
+    setAllRules(next)
+    storageSet(KEY, next)
+  }
 
   // Background sync from Sheets on mount
   useEffect(() => {
     fetchRules()
-      .then(remote => {
-        setRules(remote)
-        storageSet(KEY, remote)
-      })
-      .catch(() => {}) // silently fall back to localStorage
+      .then(remote => setAndCache(remote))
+      .catch(() => {})
   }, [])
 
+  async function refreshRules() {
+    try {
+      const remote = await fetchRules()
+      setAndCache(remote)
+    } catch {
+      // silently fall back to cached state
+    }
+  }
+
   async function addRule(vendor, category) {
-    const next = [...rules, { id: Date.now(), vendor: vendor.trim(), category }]
-    setRules(next)
-    storageSet(KEY, next)
+    const next = [...allRules, { id: Date.now(), vendor: vendor.trim(), category, source: 'user' }]
+    setAndCache(next)
     try {
       await persistRules(next)
     } catch {
@@ -45,9 +58,8 @@ export function useAliasRules(toast) {
   }
 
   async function removeRule(id) {
-    const next = rules.filter(r => r.id !== id)
-    setRules(next)
-    storageSet(KEY, next)
+    const next = allRules.filter(r => r.id !== id)
+    setAndCache(next)
     try {
       await persistRules(next)
     } catch {
@@ -55,5 +67,57 @@ export function useAliasRules(toast) {
     }
   }
 
-  return { rules, addRule, removeRule }
+  async function removeLlmRule(id) {
+    const next = allRules.filter(r => r.id !== id)
+    setAndCache(next)
+    try {
+      await persistRules(next)
+    } catch {
+      toast?.('Rule dismissed locally — sync to sheet failed', 'error')
+    }
+  }
+
+  // Promote an LLM suggestion to a permanent user rule (atomic)
+  async function acceptLlmRule(rule) {
+    const next = allRules
+      .filter(r => r.id !== rule.id)
+      .concat({ id: Date.now(), vendor: rule.vendor, category: rule.category, source: 'user' })
+    setAndCache(next)
+    try {
+      await persistRules(next)
+    } catch {
+      toast?.('Rule saved locally — sync to sheet failed', 'error')
+    }
+  }
+
+  // Promote all LLM suggestions to permanent user rules in one write
+  async function acceptAllLlmRules() {
+    const promoted = llmRules.map(r => ({ id: Date.now() + Math.random(), vendor: r.vendor, category: r.category, source: 'user' }))
+    const next = [...rules, ...promoted]
+    setAndCache(next)
+    try {
+      await persistRules(next)
+    } catch {
+      toast?.('Rules saved locally — sync to sheet failed', 'error')
+    }
+  }
+
+  async function runRecategorize(transactions) {
+    try {
+      const res = await fetch('/api/recategorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactions }),
+      })
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
+      // Re-read from sheet so local IDs match the sheet-assigned order
+      await refreshRules()
+      return json.llmRules?.length || 0
+    } catch {
+      return 0
+    }
+  }
+
+  return { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, acceptAllLlmRules, runRecategorize }
 }

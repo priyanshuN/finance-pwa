@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { filterByMonth, formatDate, formatINRFull, CATEGORY_COLORS } from '../lib/utils'
 
-export default function Transactions({ transactions, month, recurringIds = new Set() }) {
+export default function Transactions({ transactions, month, recurringIds = new Set(), anomalyIds = new Set() }) {
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
   const [expanded, setExpanded] = useState(null)
@@ -91,6 +91,13 @@ export default function Transactions({ transactions, month, recurringIds = new S
                         background: 'var(--surface2)', color: 'var(--muted)',
                         flexShrink: 0, letterSpacing: '0.04em',
                       }}>↻</span>
+                    )}
+                    {anomalyIds.has(t.message_id) && (
+                      <span title="Unusually high for this vendor" style={{
+                        fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 4,
+                        background: 'rgba(197,48,48,0.10)', color: 'var(--red)',
+                        flexShrink: 0, letterSpacing: '0.04em',
+                      }}>⚠</span>
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
