@@ -4,6 +4,7 @@ import {
   filterByMonth, getDebits, getCredits, sumAmount,
   groupByCategory, monthlyTotals, formatINR, formatINRFull, formatDate
 } from '../lib/utils'
+import { useBudget } from '../hooks/useBudget'
 
 function buildDigestSummary(debits, credits, cats, month) {
   const period = month
@@ -15,19 +16,60 @@ Total credited: ${formatINRFull(sumAmount(credits))}
 Top categories: ${cats.slice(0, 6).map(c => `${c.name} ${formatINRFull(c.value)}`).join(', ')}`
 }
 
+function groupByDate(transactions) {
+  const groups = {}
+  for (const t of transactions) {
+    if (!groups[t.date]) groups[t.date] = []
+    groups[t.date].push(t)
+  }
+  return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
+}
+
+function formatDayLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 export default function Overview({ transactions, month }) {
-  const filtered  = useMemo(() => filterByMonth(transactions, month), [transactions, month])
-  const debits    = useMemo(() => getDebits(filtered), [filtered])
-  const credits   = useMemo(() => getCredits(filtered), [filtered])
-  const cats      = useMemo(() => groupByCategory(debits), [debits])
-  const monthly   = useMemo(() => monthlyTotals(transactions), [transactions])
-  const totalSpend = sumAmount(debits)
-  const totalCredit = sumAmount(credits)
-  const recent    = [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
+  const filtered     = useMemo(() => filterByMonth(transactions, month), [transactions, month])
+  const debits       = useMemo(() => getDebits(filtered), [filtered])
+  const credits      = useMemo(() => getCredits(filtered), [filtered])
+  const cats         = useMemo(() => groupByCategory(debits), [debits])
+  const monthly      = useMemo(() => monthlyTotals(transactions), [transactions])
+  const totalSpend   = sumAmount(debits)
+  const totalCredit  = sumAmount(credits)
+  const net          = totalCredit - totalSpend
+  const { budgets }  = useBudget()
+
+  const totalBudget = useMemo(() =>
+    Object.values(budgets).reduce((s, v) => s + (parseFloat(v) || 0), 0),
+  [budgets])
+
+  const momDelta = useMemo(() => {
+    if (!month || monthly.length < 2) return null
+    const idx = monthly.findIndex(m => m.month === month)
+    if (idx < 1) return null
+    const prev = monthly[idx - 1].total
+    if (!prev) return null
+    return ((totalSpend - prev) / prev) * 100
+  }, [month, monthly, totalSpend])
+
+  const recentSorted = useMemo(() =>
+    [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10),
+  [filtered])
+  const recentGroups = useMemo(() => groupByDate(recentSorted), [recentSorted])
+
+  const topCat   = cats[0]
+  const upiSpend = sumAmount(debits.filter(t => t.account_type === 'UPI'))
+  const cardSpend = sumAmount(debits.filter(t => t.account_type.includes('Card')))
 
   const [digest, setDigest] = useState(null)
   const [digestLoading, setDigestLoading] = useState(false)
-
   useEffect(() => { setDigest(null) }, [month])
 
   async function fetchDigest() {
@@ -48,14 +90,10 @@ export default function Overview({ transactions, month }) {
     }
   }
 
-  const topCat = cats[0]
-  const upiSpend = sumAmount(debits.filter(t => t.account_type === 'UPI'))
-  const cardSpend = sumAmount(debits.filter(t => t.account_type.includes('Card')))
-
   return (
     <div style={{ paddingBottom: 32 }}>
 
-      {/* Total card */}
+      {/* Hero card */}
       <div style={{
         margin: '16px 16px 0',
         background: 'var(--surface)',
@@ -64,18 +102,55 @@ export default function Overview({ transactions, month }) {
         padding: '22px 20px',
         boxShadow: 'var(--shadow-md)',
       }} className="fade-up">
-        <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {month ? new Date(month + '-01').toLocaleString('default', { month: 'long', year: 'numeric' }) : 'All time'} · spend
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {month ? new Date(month + '-01').toLocaleString('default', { month: 'long', year: 'numeric' }) : 'All time'} · spend
+          </div>
+          {momDelta !== null && (
+            <div style={{
+              fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+              background: momDelta > 0 ? 'rgba(229,62,62,0.12)' : 'rgba(47,133,90,0.12)',
+              color: momDelta > 0 ? 'var(--red)' : 'var(--green)',
+            }}>
+              {momDelta > 0 ? '▲' : '▼'} {Math.abs(momDelta).toFixed(0)}% vs prev
+            </div>
+          )}
         </div>
+
         <div className="mono" style={{ fontSize: 36, fontWeight: 500, margin: '6px 0 2px', letterSpacing: '-1px' }}>
           {formatINRFull(totalSpend)}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-          {debits.length} transactions
-          {totalCredit > 0 && <span style={{ color: 'var(--green)', marginLeft: 8 }}>+{formatINR(totalCredit)} credited</span>}
+
+        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          <span>{debits.length} transactions</span>
+          {totalCredit > 0 && <span style={{ color: 'var(--green)' }}>+{formatINR(totalCredit)} in</span>}
+          {totalCredit > 0 && (
+            <span style={{ color: net >= 0 ? 'var(--green)' : 'var(--red)' }}>
+              {net >= 0 ? '+' : '−'}{formatINR(Math.abs(net))} net
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        {/* Budget progress */}
+        {totalBudget > 0 && month && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 5 }}>
+              <span>Budget used</span>
+              <span>{Math.round((totalSpend / totalBudget) * 100)}% of {formatINR(totalBudget)}</span>
+            </div>
+            <div style={{ height: 5, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min((totalSpend / totalBudget) * 100, 100)}%`,
+                borderRadius: 3,
+                background: totalSpend > totalBudget ? 'var(--red)' : 'var(--accent)',
+                transition: 'width 0.4s ease',
+              }} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
           {[
             { label: 'UPI', val: upiSpend, color: 'var(--purple)' },
             { label: 'Card', val: cardSpend, color: 'var(--blue)' },
@@ -143,7 +218,7 @@ export default function Overview({ transactions, month }) {
         )}
       </div>
 
-      {/* Monthly bar chart */}
+      {/* Monthly bar chart (all-time view) */}
       {!month && (
         <div style={{
           margin: '12px 16px 0',
@@ -197,42 +272,51 @@ export default function Overview({ transactions, month }) {
         </div>
       </div>
 
-      {/* Recent transactions */}
-      <div style={{ margin: '16px 16px 0' }} className="fade-up">
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>Recent</div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
-          {recent.map((t, i) => (
-            <div key={t.message_id || i} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 16px',
-              borderBottom: i < recent.length - 1 ? '1px solid var(--border)' : 'none',
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: 'var(--surface2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16,
-              }}>
-                {categoryEmoji(t.category)}
+      {/* Recent — date-grouped */}
+      {recentGroups.length > 0 && (
+        <div style={{ margin: '16px 16px 0' }} className="fade-up">
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>Recent</div>
+          {recentGroups.map(([date, txns]) => (
+            <div key={date} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, paddingLeft: 4 }}>
+                {formatDayLabel(date)}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {t.vendor}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                  {formatDate(t.date)} · {t.account_type}
-                </div>
-              </div>
-              <div className="mono" style={{
-                fontSize: 13, fontWeight: 500, flexShrink: 0,
-                color: t.direction === 'credit' ? 'var(--green)' : 'var(--red)',
-              }}>
-                {t.direction === 'credit' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+                {txns.map((t, i) => (
+                  <div key={t.message_id || i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '13px 16px', minHeight: 44,
+                    borderBottom: i < txns.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                      background: 'var(--surface2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16,
+                    }}>
+                      {categoryEmoji(t.category)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {t.vendor}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+                        {t.account_type}
+                      </div>
+                    </div>
+                    <div className="mono" style={{
+                      fontSize: 13, fontWeight: 500, flexShrink: 0,
+                      color: t.direction === 'credit' ? 'var(--green)' : 'var(--red)',
+                    }}>
+                      {t.direction === 'credit' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
