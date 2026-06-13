@@ -103,11 +103,19 @@ export function useAliasRules(toast) {
   }
 
   async function runRecategorize(transactions) {
+    const knownVendors = new Set(allRules.map(r => r.vendor.toLowerCase()))
+    const candidates = transactions.filter(t =>
+      t.direction === 'debit' &&
+      t.account_type === 'UPI' &&
+      t.category === 'Other' &&
+      !knownVendors.has(t.vendor.toLowerCase())
+    )
+    if (!candidates.length) return 0
     try {
       const res = await fetch('/api/recategorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions }),
+        body: JSON.stringify({ transactions: candidates }),
       })
       const json = await res.json()
       if (json.error) throw new Error(json.error)

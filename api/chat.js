@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     const client = getClient();
     const completion = await client.chat.completions.create({
-      model: 'anthropic/claude-sonnet-4-5',
+      model: 'anthropic/claude-sonnet-4-6',
       messages: [
         {
           role: 'system',
