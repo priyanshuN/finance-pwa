@@ -2,7 +2,7 @@ import React, { useState, useMemo, lazy, Suspense } from 'react'
 import { useTransactions } from './hooks/useTransactions'
 import { useToast } from './hooks/useToast'
 import { useAliasRules } from './hooks/useAliasRules'
-import { getMonths, applyAliasRules, detectRecurring } from './lib/utils'
+import { getMonths, applyAliasRules, detectRecurring, detectAnomalies } from './lib/utils'
 import ToastContainer from './components/common/Toast'
 
 const Overview     = lazy(() => import('./components/Overview'))
@@ -11,14 +11,16 @@ const Recurring    = lazy(() => import('./components/Recurring'))
 const Trends       = lazy(() => import('./components/Trends'))
 const Budget       = lazy(() => import('./components/Budget'))
 const Settings     = lazy(() => import('./components/Settings'))
+const Chat         = lazy(() => import('./components/Chat'))
 
 const NAV = [
-  { id: 'overview',     label: 'Overview',      icon: '◈' },
-  { id: 'transactions', label: 'Transactions',   icon: '≡' },
-  { id: 'recurring',    label: 'Recurring',      icon: '↻' },
-  { id: 'trends',       label: 'Trends',         icon: '↗' },
-  { id: 'budget',       label: 'Budget',         icon: '◎' },
-  { id: 'settings',     label: 'Settings',       icon: '⚙' },
+  { id: 'overview',     label: 'Overview',  icon: '◈' },
+  { id: 'transactions', label: 'Txns',      icon: '≡' },
+  { id: 'recurring',    label: 'Recurring', icon: '↻' },
+  { id: 'trends',       label: 'Trends',    icon: '↗' },
+  { id: 'budget',       label: 'Budget',    icon: '◎' },
+  { id: 'chat',         label: 'Chat',      icon: '◌' },
+  { id: 'settings',     label: 'Settings',  icon: '⚙' },
 ]
 
 export default function App() {
@@ -32,6 +34,7 @@ export default function App() {
   // User rules take priority (first match wins in applyAliasRules)
   const transactions = useMemo(() => data ? applyAliasRules(data, [...rules, ...llmRules]) : data, [data, rules, llmRules])
   const recurringIds = useMemo(() => transactions ? detectRecurring(transactions) : new Set(), [transactions])
+  const anomalyIds   = useMemo(() => transactions ? detectAnomalies(transactions) : new Set(), [transactions])
 
   const hasRecategorized = React.useRef(false)
   React.useEffect(() => {
@@ -46,7 +49,7 @@ export default function App() {
     if (months.length && !month) setMonth(months[months.length - 1])
   }, [months])
 
-  const title = { overview: 'Overview', transactions: 'Transactions', recurring: 'Recurring', trends: 'Trends', budget: 'Budget', settings: 'Settings' }
+  const title = { overview: 'Overview', transactions: 'Transactions', recurring: 'Recurring', trends: 'Trends', budget: 'Budget', chat: 'Chat', settings: 'Settings' }
 
   if (loading) return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -63,7 +66,7 @@ export default function App() {
     </div>
   )
 
-  const showMonthPicker = tab === 'overview' || tab === 'transactions' || tab === 'budget'
+  const showMonthPicker = tab === 'overview' || tab === 'transactions' || tab === 'budget' || tab === 'chat'
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100dvh', position: 'relative' }}>
@@ -104,16 +107,20 @@ export default function App() {
       )}
 
       {/* Content */}
-      <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
-        <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
-          {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
-          {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} />}
-          {tab === 'recurring'    && <Recurring transactions={transactions} />}
-          {tab === 'trends'       && <Trends transactions={transactions} />}
-          {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
-          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} onAcceptAllLlmRules={acceptAllLlmRules} />}
-        </Suspense>
-      </div>
+      <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
+        {tab === 'chat' ? (
+          <Chat transactions={transactions} month={month} />
+        ) : (
+          <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
+            {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
+            {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} anomalyIds={anomalyIds} />}
+            {tab === 'recurring'    && <Recurring transactions={transactions} />}
+            {tab === 'trends'       && <Trends transactions={transactions} />}
+            {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
+            {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} onAcceptAllLlmRules={acceptAllLlmRules} />}
+          </div>
+        )}
+      </Suspense>
 
       {/* Bottom nav */}
       <div style={{

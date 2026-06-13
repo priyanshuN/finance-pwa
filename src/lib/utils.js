@@ -126,6 +126,27 @@ export function detectRecurring(transactions) {
   return ids
 }
 
+export function detectAnomalies(transactions) {
+  const byVendor = {}
+  for (const t of transactions) {
+    if (t.direction !== 'debit') continue
+    if (!byVendor[t.vendor]) byVendor[t.vendor] = []
+    byVendor[t.vendor].push(t)
+  }
+  const anomalies = new Set()
+  for (const txns of Object.values(byVendor)) {
+    if (txns.length < 3) continue
+    const amounts = txns.map(t => t.amount)
+    const mean = amounts.reduce((s, a) => s + a, 0) / amounts.length
+    const std = Math.sqrt(amounts.reduce((s, a) => s + (a - mean) ** 2, 0) / amounts.length)
+    if (std === 0) continue
+    for (const t of txns) {
+      if (t.amount > mean + 2.5 * std) anomalies.add(t.message_id)
+    }
+  }
+  return anomalies
+}
+
 export function applyAliasRules(transactions, rules) {
   if (!rules.length) return transactions
   return transactions.map(t => {
