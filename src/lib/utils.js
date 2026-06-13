@@ -81,3 +81,11 @@ export function formatINRFull(amount) {
 export function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
+
+export function applyAliasRules(transactions, rules) {
+  if (!rules.length) return transactions
+  return transactions.map(t => {
+    const match = rules.find(r => t.vendor.toLowerCase().includes(r.vendor.toLowerCase()))
+    return match ? { ...t, category: match.category } : t
+  })
+}

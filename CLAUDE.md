@@ -35,7 +35,8 @@ vercel dev       # Full-stack local dev (runs frontend + /api/* serverless funct
 ## Environment variables
 
 Required in Vercel (or `.env.local` for `vercel dev`):
-- `SHEET_ID` — Google Sheet ID
+- `SHEET_ID` — Google Sheet ID (transactions, service account needs Viewer)
+- `RULES_SHEET_ID` — separate Google Sheet ID for alias rules (service account needs Editor)
 - `GOOGLE_SERVICE_ACCOUNT_JSON` — full service account JSON (stringified)
 
 ## Deployment

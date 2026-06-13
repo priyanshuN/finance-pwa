@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, lazy, Suspense } from 'react'
 import { useTransactions } from './hooks/useTransactions'
 import { useToast } from './hooks/useToast'
-import { getMonths } from './lib/utils'
-import Overview from './components/Overview'
-import Transactions from './components/Transactions'
-import Trends from './components/Trends'
-import Budget from './components/Budget'
-import Settings from './components/Settings'
+import { useAliasRules } from './hooks/useAliasRules'
+import { getMonths, applyAliasRules } from './lib/utils'
 import ToastContainer from './components/common/Toast'
+
+const Overview     = lazy(() => import('./components/Overview'))
+const Transactions = lazy(() => import('./components/Transactions'))
+const Trends       = lazy(() => import('./components/Trends'))
+const Budget       = lazy(() => import('./components/Budget'))
+const Settings     = lazy(() => import('./components/Settings'))
 
 const NAV = [
   { id: 'overview',     label: 'Overview',      icon: '◈' },
@@ -20,10 +22,12 @@ const NAV = [
 export default function App() {
   const { data, loading, error, lastSync, refetch } = useTransactions()
   const { toasts, toast, dismiss } = useToast()
+  const { rules, addRule, removeRule } = useAliasRules(toast)
   const [tab, setTab]     = useState('overview')
   const [month, setMonth] = useState('')
 
   const months = useMemo(() => data ? getMonths(data) : [], [data])
+  const transactions = useMemo(() => data ? applyAliasRules(data, rules) : data, [data, rules])
 
   React.useEffect(() => {
     if (months.length && !month) setMonth(months[months.length - 1])
@@ -88,11 +92,13 @@ export default function App() {
 
       {/* Content */}
       <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
-        {tab === 'overview'     && <Overview transactions={data} month={month} />}
-        {tab === 'transactions' && <Transactions transactions={data} month={month} />}
-        {tab === 'trends'       && <Trends transactions={data} />}
-        {tab === 'budget'       && <Budget transactions={data} month={month} />}
-        {tab === 'settings'     && <Settings transactions={data} month={month} onRefetch={refetch} toast={toast} />}
+        <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
+          {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
+          {tab === 'transactions' && <Transactions transactions={transactions} month={month} />}
+          {tab === 'trends'       && <Trends transactions={transactions} />}
+          {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
+          {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} />}
+        </Suspense>
       </div>
 
       {/* Bottom nav */}
