@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.0 — 2026-06-13
+
+### Added
+- **AI Recategorization** — on first load, Claude Haiku (via OpenRouter) classifies all `UPI / Personal` and `Other` debit transactions by vendor. Suggestions are stored as `source=llm` alias rules in the Rules Sheet and applied automatically. Requires `OPENROUTER_API_KEY`.
+- **AI Suggested Rules** section in Settings — review, accept, or dismiss LLM suggestions individually or with one "Accept all" tap. Accepted suggestions are promoted to permanent user rules.
+- **Chat tab** — ask free-form questions about your spending. Claude Sonnet receives the current month's totals, category breakdown, and last 40 transactions as context. Month picker applies to chat context.
+- **Monthly Digest** — "Summarise this month" card in Overview calls Claude Haiku to generate a 3-sentence narrative covering top spend, a notable pattern, and an actionable insight. Resets on month change.
+- **Anomaly detection** — algorithmic. Debits more than 2.5σ above a vendor's historical mean (≥3 past transactions) get a red ⚠ badge in the Transactions list alongside the existing ↻ recurring badge.
+
+---
+
 ## v1.1.1 — 2026-06-13
 
 ### Fixed
