@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { filterByMonth, formatDate, formatINRFull, CATEGORY_COLORS } from '../lib/utils'
 
-export default function Transactions({ transactions, month }) {
+export default function Transactions({ transactions, month, recurringIds = new Set() }) {
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
   const [expanded, setExpanded] = useState(null)
@@ -81,8 +81,17 @@ export default function Transactions({ transactions, month }) {
                   background: CATEGORY_COLORS[t.category] || '#a0aec0',
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {t.vendor}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {t.vendor}
+                    </div>
+                    {recurringIds.has(t.message_id) && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 4,
+                        background: 'var(--surface2)', color: 'var(--muted)',
+                        flexShrink: 0, letterSpacing: '0.04em',
+                      }}>↻</span>
+                    )}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
                     {formatDate(t.date)} · {t.category} · {t.account_type}
