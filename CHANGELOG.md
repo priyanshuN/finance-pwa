@@ -1,0 +1,30 @@
+# Changelog
+
+## v1.1.0 — 2026-06-13
+
+### Added
+- **Alias Rules** — map vendor substrings to categories in Settings (e.g. NoBroker → Housing). Rules persist to a separate Google Sheet and cache in localStorage for instant offline access.
+- **Recurring tab** — algorithmically detects fixed monthly commitments (same vendor, ≤20% amount variance, 2+ months). Shows total fixed monthly cost and PAID/PENDING badge per vendor for the current month.
+- **↻ badge** on recurring transactions in the Transactions list.
+
+### Improved
+- **Bundle size** — lazy-load all tab components with `React.lazy`. Initial bundle 587KB → 152KB (74% smaller). Recharts only loads when Trends tab is opened.
+
+### Dependencies
+- Upgraded recharts v2 → v3 (no breaking changes).
+
+### Infrastructure
+- GitHub Actions now opt into Node.js 24 ahead of the June 16th forced cutover.
+- New env var: `RULES_SHEET_ID` — separate Google Sheet for alias rules (service account needs Editor access).
+
+---
+
+## v1.0.0 — 2026-06-09
+
+Initial release.
+
+- Transaction dashboard reading from Google Sheets via service account.
+- Overview, Transactions, Trends, Budget, Settings tabs.
+- Month picker, category filters, CSV export.
+- Budget limits stored in localStorage.
+- Tag-driven production deploys via GitHub Actions + Vercel.
