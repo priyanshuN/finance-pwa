@@ -3,6 +3,7 @@ import { version } from '../../package.json'
 import { useBudget } from '../hooks/useBudget'
 import { exportTransactions } from '../lib/export'
 import { CATEGORY_COLORS } from '../lib/utils'
+import ThemePicker from './ThemePicker'
 
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 
@@ -83,6 +84,7 @@ export default function Settings({ transactions, month, onRefetch, toast, rules,
 
   return (
     <div style={{ paddingBottom: 32 }}>
+      <ThemePicker />
       {rows.map(({ section, items }) => (
         <div key={section} style={{ margin: '16px 16px 0' }} className="fade-up">
           <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
