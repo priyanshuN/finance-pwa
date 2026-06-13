@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import Markdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 
 const SUGGESTIONS = [
@@ -74,9 +75,19 @@ export default function Chat({ transactions, month }) {
               padding: '10px 14px',
               fontSize: 13,
               lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
             }}>
-              {m.content}
+              {m.role === 'user' ? m.content : (
+                <Markdown components={{
+                  p:      ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
+                  strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                  ul:     ({ children }) => <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ul>,
+                  ol:     ({ children }) => <ol style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ol>,
+                  li:     ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>,
+                  code:   ({ children }) => <code style={{ background: 'var(--surface2)', borderRadius: 4, padding: '1px 5px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>{children}</code>,
+                }}>
+                  {m.content}
+                </Markdown>
+              )}
             </div>
           </div>
         ))}
