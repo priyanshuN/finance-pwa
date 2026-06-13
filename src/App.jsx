@@ -112,7 +112,7 @@ export default function App() {
           <Chat transactions={transactions} month={month} />
         ) : (
           <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
-            {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
+            {tab === 'overview'     && <Overview transactions={transactions} month={month} onNavigate={setTab} />}
             {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} anomalyIds={anomalyIds} />}
             {tab === 'recurring'    && <Recurring transactions={transactions} />}
             {tab === 'trends'       && <Trends transactions={transactions} />}

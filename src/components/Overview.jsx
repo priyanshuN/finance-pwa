@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   filterByMonth, getDebits, getCredits, sumAmount,
   groupByCategory, monthlyTotals, formatINR, formatINRFull, formatDate
 } from '../lib/utils'
 import { useBudget } from '../hooks/useBudget'
+import { exportTransactions } from '../lib/export'
 
 function buildDigestSummary(debits, credits, cats, month) {
   const period = month
@@ -32,15 +33,22 @@ function formatDayLabel(dateStr) {
   yesterday.setDate(today.getDate() - 1)
   if (d.toDateString() === today.toDateString()) return 'Today'
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()
 }
 
-export default function Overview({ transactions, month }) {
+const QUICK_ACTIONS = [
+  { icon: '+', label: 'Add', tab: null },
+  { icon: '⇄', label: 'Transfer', tab: null },
+  { icon: '◎', label: 'Budget', tab: 'budget' },
+  { icon: '↓', label: 'Export', tab: 'export' },
+]
+
+export default function Overview({ transactions, month, onNavigate }) {
   const filtered     = useMemo(() => filterByMonth(transactions, month), [transactions, month])
   const debits       = useMemo(() => getDebits(filtered), [filtered])
   const credits      = useMemo(() => getCredits(filtered), [filtered])
   const cats         = useMemo(() => groupByCategory(debits), [debits])
-  const monthly      = useMemo(() => monthlyTotals(transactions), [transactions]) // used by all-time bar chart
+  const monthly      = useMemo(() => monthlyTotals(transactions), [transactions])
   const totalSpend   = sumAmount(debits)
   const totalCredit  = sumAmount(credits)
   const net          = totalCredit - totalSpend
@@ -60,14 +68,12 @@ export default function Overview({ transactions, month }) {
     return ((totalSpend - prevSpend) / prevSpend) * 100
   }, [month, transactions, totalSpend])
 
-  const recentSorted = useMemo(() =>
-    [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10),
-  [filtered])
-  const recentGroups = useMemo(() => groupByDate(recentSorted), [recentSorted])
+  const recentGroups = useMemo(() => {
+    const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10)
+    return groupByDate(sorted)
+  }, [filtered])
 
-  const topCat   = cats[0]
-  const upiSpend = sumAmount(debits.filter(t => t.account_type === 'UPI'))
-  const cardSpend = sumAmount(debits.filter(t => t.account_type.includes('Card')))
+  const topCats = cats.slice(0, 4)
 
   const [digest, setDigest] = useState(null)
   const [digestLoading, setDigestLoading] = useState(false)
@@ -90,6 +96,18 @@ export default function Overview({ transactions, month }) {
       setDigestLoading(false)
     }
   }
+
+  function handleQuickAction(action) {
+    if (action.tab === 'export') {
+      exportTransactions(transactions, month)
+    } else if (action.tab && onNavigate) {
+      onNavigate(action.tab)
+    }
+  }
+
+  const upiSpend  = sumAmount(debits.filter(t => t.account_type === 'UPI'))
+  const cardSpend = sumAmount(debits.filter(t => t.account_type.includes('Card')))
+  const topCat    = cats[0]
 
   return (
     <div style={{ paddingBottom: 32 }}>
@@ -122,22 +140,21 @@ export default function Overview({ transactions, month }) {
           {formatINRFull(totalSpend)}
         </div>
 
-        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
-          <span>{debits.length} transactions</span>
-          {totalCredit > 0 && <span style={{ color: 'var(--green)' }}>+{formatINR(totalCredit)} in</span>}
-          {totalCredit > 0 && (
+        {totalCredit > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14, display: 'flex', gap: 12 }}>
+            <span style={{ color: 'var(--green)' }}>Income +{formatINR(totalCredit)}</span>
             <span style={{ color: net >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {net >= 0 ? '+' : '−'}{formatINR(Math.abs(net))} net
+              Net {net >= 0 ? '+' : '−'}{formatINR(Math.abs(net))}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Budget progress */}
         {totalBudget > 0 && month && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 5 }}>
-              <span>Budget used</span>
-              <span>{Math.round((totalSpend / totalBudget) * 100)}% of {formatINR(totalBudget)}</span>
+              <span>Monthly budget</span>
+              <span>{formatINR(totalSpend)} / {formatINR(totalBudget)} · {Math.round((totalSpend / totalBudget) * 100)}%</span>
             </div>
             <div style={{ height: 5, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden' }}>
               <div style={{
@@ -169,6 +186,32 @@ export default function Overview({ transactions, month }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ margin: '12px 16px 0', display: 'flex', gap: 8 }} className="fade-up">
+        {QUICK_ACTIONS.map(action => {
+          const enabled = action.tab !== null
+          return (
+            <button
+              key={action.label}
+              onClick={() => handleQuickAction(action)}
+              disabled={!enabled}
+              style={{
+                flex: 1,
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 16, padding: '12px 4px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                cursor: enabled ? 'pointer' : 'default',
+                opacity: enabled ? 1 : 0.4,
+                fontFamily: 'Syne, sans-serif',
+              }}
+            >
+              <span style={{ fontSize: 18, color: 'var(--text)' }}>{action.icon}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>{action.label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* AI Digest */}
@@ -219,7 +262,7 @@ export default function Overview({ transactions, month }) {
         )}
       </div>
 
-      {/* Monthly bar chart (all-time view) */}
+      {/* Monthly bar chart (all-time only) */}
       {!month && (
         <div style={{
           margin: '12px 16px 0',
@@ -243,40 +286,67 @@ export default function Overview({ transactions, month }) {
         </div>
       )}
 
-      {/* Category donut */}
-      <div style={{
-        margin: '12px 16px 0',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 20,
-        padding: '16px',
-        display: 'flex',
-        gap: 12,
-        alignItems: 'center',
-      }} className="fade-up">
-        <ResponsiveContainer width={110} height={110}>
-          <PieChart>
-            <Pie data={cats.slice(0, 6)} cx="50%" cy="50%" innerRadius={32} outerRadius={50}
-              dataKey="value" strokeWidth={0}>
-              {cats.slice(0, 6).map((c, i) => <Cell key={i} fill={c.color} />)}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {cats.slice(0, 5).map(c => (
-            <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-              <div style={{ fontSize: 12, flex: 1, color: 'var(--muted)' }}>{c.name}</div>
-              <div className="mono" style={{ fontSize: 12 }}>{formatINR(c.value)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Where it went — stacked bar */}
+      {topCats.length > 0 && (
+        <div style={{
+          margin: '12px 16px 0',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 20, padding: '16px',
+        }} className="fade-up">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Where it went</div>
+            <button
+              onClick={() => onNavigate?.('transactions')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'Syne, sans-serif', padding: 0 }}
+            >
+              Details ›
+            </button>
+          </div>
 
-      {/* Recent — date-grouped */}
+          {/* Stacked bar */}
+          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2, marginBottom: 14 }}>
+            {topCats.map(c => (
+              <div key={c.name} style={{
+                flex: c.value,
+                background: c.color,
+                minWidth: 4,
+              }} />
+            ))}
+            {/* Remainder (other) */}
+            {totalSpend - sumAmount(topCats) > 0 && (
+              <div style={{ flex: totalSpend - sumAmount(topCats), background: 'var(--surface2)', minWidth: 4 }} />
+            )}
+          </div>
+
+          {/* Legend: 2-column grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+            {topCats.map(c => (
+              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                <div style={{ fontSize: 12, color: 'var(--muted)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.name}
+                </div>
+                <div className="mono" style={{ fontSize: 12, color: 'var(--text)', flexShrink: 0 }}>
+                  {Math.round((c.value / totalSpend) * 100)}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent activity — date-grouped */}
       {recentGroups.length > 0 && (
-        <div style={{ margin: '16px 16px 0' }} className="fade-up">
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>Recent</div>
+        <div style={{ margin: '12px 16px 0' }} className="fade-up">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Recent activity</div>
+            <button
+              onClick={() => onNavigate?.('transactions')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'Syne, sans-serif', padding: 0 }}
+            >
+              See all ›
+            </button>
+          </div>
           {recentGroups.map(([date, txns]) => (
             <div key={date} style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, paddingLeft: 4 }}>
@@ -302,7 +372,7 @@ export default function Overview({ transactions, month }) {
                         {t.vendor}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                        {t.account_type}
+                        {t.category} · {t.account_type}
                       </div>
                     </div>
                     <div className="mono" style={{
