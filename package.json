@@ -1,6 +1,6 @@
 {
   "name": "finance-pwa",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "openai": "^6.42.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.8.1"
   },
   "devDependencies": {

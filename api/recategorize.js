@@ -93,12 +93,11 @@ export default async function handler(req, res) {
 
     const client = getClient();
     const completion = await client.chat.completions.create({
-      model: 'anthropic/claude-haiku-4-5',
-      response_format: { type: 'json_object' },
+      model: 'anthropic/claude-sonnet-4-6',
       messages: [
         {
           role: 'system',
-          content: `You are a personal finance assistant for an Indian user. Classify each vendor into exactly one category from this list:\n${CATEGORIES.join(', ')}\n\nRespond with JSON: {"rules": [{"vendor": "...", "category": "..."}, ...]}`,
+          content: `You are a personal finance classifier. You output raw JSON only — no markdown, no code fences, no explanation. Valid categories: ${CATEGORIES.join(', ')}. Output format: {"rules":[{"vendor":"...","category":"..."}]}`,
         },
         {
           role: 'user',
@@ -110,8 +109,13 @@ export default async function handler(req, res) {
 
     let mappings = [];
     try {
-      const parsed = JSON.parse(completion.choices[0].message.content);
-      mappings = Array.isArray(parsed.rules) ? parsed.rules : [];
+      const text = completion.choices[0].message.content || '';
+      // Extract JSON object from response (handles markdown code blocks too)
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        mappings = Array.isArray(parsed.rules) ? parsed.rules : [];
+      }
     } catch {
       mappings = [];
     }

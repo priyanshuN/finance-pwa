@@ -68,22 +68,24 @@ gh pr merge $PR --merge --delete-branch
 # Never use --admin to bypass branch protection.
 ```
 
-### 4. Update CHANGELOG.md
+### 4. Bump version + update CHANGELOG.md
 - `main` is branch-protected — never commit directly.
-- Create a dedicated branch, add the entry at the top of `CHANGELOG.md`, commit, push, raise a PR, and merge it.
+- Create a dedicated branch, bump `package.json` version to X.Y.Z, add the CHANGELOG entry, commit, push, raise a PR, and merge it.
 
 ```bash
 git checkout main && git pull origin main
 git checkout -b chore/changelog-vX.Y.Z
 
+# 1. Bump version in package.json to X.Y.Z
+# 2. Add CHANGELOG entry at the top:
 # Edit CHANGELOG.md — add new section above the previous latest version:
 # ## vX.Y.Z — YYYY-MM-DD
 #
 # ### Fixed / Added / Changed
 # - ...
 
-git add CHANGELOG.md
-git commit -m "docs: add CHANGELOG entry for vX.Y.Z"
+git add package.json CHANGELOG.md
+git commit -m "chore: bump version to vX.Y.Z and add CHANGELOG entry"
 git push origin chore/changelog-vX.Y.Z
 
 gh pr create --base main --head chore/changelog-vX.Y.Z \
