@@ -39,6 +39,70 @@ Required in Vercel (or `.env.local` for `vercel dev`):
 - `RULES_SHEET_ID` — separate Google Sheet ID for alias rules (service account needs Editor)
 - `GOOGLE_SERVICE_ACCOUNT_JSON` — full service account JSON (stringified)
 
+## Release workflow
+
+Follow these steps in order when shipping any fix or feature to production.
+
+### 1. Raise a PR
+```bash
+gh auth switch --user priyanshuN   # always switch to personal account first
+gh pr create --base main --head <branch> \
+  --title "<type>: <short description>" \
+  --body "Automated PR — summary will be posted as a comment."
+```
+
+### 2. Post a PR summary comment
+```bash
+PR=$(gh pr view --json number -q .number)
+gh api repos/priyanshuN/finance-pwa/issues/$PR/comments \
+  --method POST \
+  --field body="## PR Summary
+
+<what changed and why>"
+```
+
+### 3. Merge the PR (after CI passes)
+```bash
+gh pr merge $PR --merge --delete-branch
+# If CI hasn't finished yet, use --auto instead and wait for checks to pass.
+# Never use --admin to bypass branch protection.
+```
+
+### 4. Update CHANGELOG.md
+- `main` is branch-protected — never commit directly.
+- Create a dedicated branch, add the entry at the top of `CHANGELOG.md`, commit, push, raise a PR, and merge it.
+
+```bash
+git checkout main && git pull origin main
+git checkout -b chore/changelog-vX.Y.Z
+
+# Edit CHANGELOG.md — add new section above the previous latest version:
+# ## vX.Y.Z — YYYY-MM-DD
+#
+# ### Fixed / Added / Changed
+# - ...
+
+git add CHANGELOG.md
+git commit -m "docs: add CHANGELOG entry for vX.Y.Z"
+git push origin chore/changelog-vX.Y.Z
+
+gh pr create --base main --head chore/changelog-vX.Y.Z \
+  --title "docs: add CHANGELOG entry for vX.Y.Z" \
+  --body "Automated PR — summary will be posted as a comment."
+
+gh pr merge <PR> --merge --delete-branch
+# Wait for scan + build checks before merging (use --auto if needed).
+```
+
+### 5. Tag the release
+```bash
+git checkout main && git pull origin main
+git tag vX.Y.Z
+git push origin vX.Y.Z   # triggers deploy.yml → Vercel production
+```
+
+---
+
 ## Deployment
 
 **Production** is tag-driven via GitHub Actions — never auto-deploys on push to `main`:
