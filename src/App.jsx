@@ -2,7 +2,7 @@ import React, { useState, useMemo, lazy, Suspense } from 'react'
 import { useTransactions } from './hooks/useTransactions'
 import { useToast } from './hooks/useToast'
 import { useAliasRules } from './hooks/useAliasRules'
-import { getMonths, applyAliasRules } from './lib/utils'
+import { getMonths, applyAliasRules, detectRecurring } from './lib/utils'
 import ToastContainer from './components/common/Toast'
 
 const Overview     = lazy(() => import('./components/Overview'))
@@ -28,6 +28,7 @@ export default function App() {
 
   const months = useMemo(() => data ? getMonths(data) : [], [data])
   const transactions = useMemo(() => data ? applyAliasRules(data, rules) : data, [data, rules])
+  const recurringIds = useMemo(() => transactions ? detectRecurring(transactions) : new Set(), [transactions])
 
   React.useEffect(() => {
     if (months.length && !month) setMonth(months[months.length - 1])
@@ -94,7 +95,7 @@ export default function App() {
       <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
         <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
           {tab === 'overview'     && <Overview transactions={transactions} month={month} />}
-          {tab === 'transactions' && <Transactions transactions={transactions} month={month} />}
+          {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} />}
           {tab === 'trends'       && <Trends transactions={transactions} />}
           {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
           {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} />}

@@ -82,6 +82,25 @@ export function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
+export function detectRecurring(transactions) {
+  const byVendor = {}
+  for (const t of transactions) {
+    if (t.direction !== 'debit') continue
+    if (!byVendor[t.vendor]) byVendor[t.vendor] = []
+    byVendor[t.vendor].push(t)
+  }
+  const recurring = new Set()
+  for (const [, txns] of Object.entries(byVendor)) {
+    const months = new Set(txns.map(t => t.date.slice(0, 7)))
+    if (months.size < 2) continue
+    const amounts = txns.map(t => t.amount)
+    const avg = amounts.reduce((s, a) => s + a, 0) / amounts.length
+    const variance = (Math.max(...amounts) - Math.min(...amounts)) / avg
+    if (variance <= 0.2) txns.forEach(t => recurring.add(t.message_id))
+  }
+  return recurring
+}
+
 export function applyAliasRules(transactions, rules) {
   if (!rules.length) return transactions
   return transactions.map(t => {
