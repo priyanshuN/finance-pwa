@@ -7,31 +7,34 @@ import ToastContainer from './components/common/Toast'
 
 const Overview     = lazy(() => import('./components/Overview'))
 const Transactions = lazy(() => import('./components/Transactions'))
-const Recurring    = lazy(() => import('./components/Recurring'))
-const Trends       = lazy(() => import('./components/Trends'))
 const Budget       = lazy(() => import('./components/Budget'))
-const Settings     = lazy(() => import('./components/Settings'))
+const Trends       = lazy(() => import('./components/Trends'))
 const Chat         = lazy(() => import('./components/Chat'))
+const Settings     = lazy(() => import('./components/Settings'))
 
 const NAV = [
-  { id: 'overview',     label: 'Overview',  icon: '◈' },
-  { id: 'transactions', label: 'Txns',      icon: '≡' },
-  { id: 'recurring',    label: 'Recurring', icon: '↻' },
-  { id: 'trends',       label: 'Trends',    icon: '↗' },
-  { id: 'budget',       label: 'Budget',    icon: '◎' },
-  { id: 'chat',         label: 'Chat',      icon: '◌' },
-  { id: 'settings',     label: 'Settings',  icon: '⚙' },
+  { id: 'overview',     label: 'Overview', icon: '◈' },
+  { id: 'transactions', label: 'Txns',     icon: '≡' },
+  { id: 'budget',       label: 'Budget',   icon: '◎' },
+  { id: 'trends',       label: 'Trends',   icon: '↗' },
+  { id: 'chat',         label: 'Chat',     icon: '◌' },
 ]
 
 export default function App() {
   const { data, loading, error, lastSync, refetch } = useTransactions()
   const { toasts, toast, dismiss } = useToast()
   const { rules, llmRules, addRule, removeRule, removeLlmRule, acceptLlmRule, acceptAllLlmRules, runRecategorize } = useAliasRules(toast)
-  const [tab, setTab]     = useState('overview')
-  const [month, setMonth] = useState('')
+  const [tab, setTab]             = useState('overview')
+  const [month, setMonth]         = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [budgetSeg, setBudgetSeg] = useState('budgets')
+
+  function navigate(nextTab, seg) {
+    setTab(nextTab)
+    if (nextTab === 'budget' && seg) setBudgetSeg(seg)
+  }
 
   const months = useMemo(() => data ? getMonths(data) : [], [data])
-  // User rules take priority (first match wins in applyAliasRules)
   const transactions = useMemo(() => data ? applyAliasRules(data, [...rules, ...llmRules]) : data, [data, rules, llmRules])
   const recurringIds = useMemo(() => transactions ? detectRecurring(transactions) : new Set(), [transactions])
   const anomalyIds   = useMemo(() => transactions ? detectAnomalies(transactions) : new Set(), [transactions])
@@ -49,8 +52,6 @@ export default function App() {
     if (months.length && !month) setMonth(months[months.length - 1])
   }, [months])
 
-  const title = { overview: 'Overview', transactions: 'Transactions', recurring: 'Recurring', trends: 'Trends', budget: 'Budget', chat: 'Chat', settings: 'Settings' }
-
   if (loading) return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
       <div style={{ fontSize: 28 }}>💰</div>
@@ -66,63 +67,25 @@ export default function App() {
     </div>
   )
 
-  const showMonthPicker = tab === 'overview' || tab === 'transactions' || tab === 'budget' || tab === 'chat'
+  const sharedProps = { onOpenSettings: () => setSettingsOpen(true), onSync: refetch }
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100dvh', position: 'relative' }}>
 
-      {/* Header */}
-      <div style={{ padding: '52px 16px 12px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Finance Tracker</div>
-          <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{title[tab]}</div>
-        </div>
-        <button onClick={refetch} style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '6px 12px', fontSize: 11, cursor: 'pointer',
-          color: 'var(--muted)', fontFamily: 'Syne, sans-serif',
-        }}>
-          ↻ Sync
-        </button>
-      </div>
-
-      {/* Month tabs */}
-      {showMonthPicker && (
-        <div style={{ display: 'flex', gap: 8, padding: '0 16px 4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-          <button onClick={() => setMonth('')} style={pillStyle(month === '')}>All</button>
-          {months.map(m => (
-            <button key={m} onClick={() => setMonth(m)} style={pillStyle(month === m)}>
-              {new Date(m + '-01').toLocaleString('default', { month: 'short' })}
-              {isCurrentMonth(m) ? ' •' : ''}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Last sync */}
-      {lastSync && (
-        <div style={{ fontSize: 10, color: 'var(--muted)', padding: '4px 16px 0', textAlign: 'right' }}>
-          Synced {timeSince(lastSync)}
-        </div>
-      )}
-
-      {/* Content */}
       <Suspense fallback={<div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}>
         {tab === 'chat' ? (
-          <Chat transactions={transactions} month={month} />
+          <Chat transactions={transactions} month={month} {...sharedProps} />
         ) : (
-          <div style={{ overflowY: 'auto', paddingBottom: 80 }}>
-            {tab === 'overview'     && <Overview transactions={transactions} month={month} onNavigate={setTab} />}
-            {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} anomalyIds={anomalyIds} />}
-            {tab === 'recurring'    && <Recurring transactions={transactions} />}
-            {tab === 'trends'       && <Trends transactions={transactions} />}
-            {tab === 'budget'       && <Budget transactions={transactions} month={month} />}
-            {tab === 'settings'     && <Settings transactions={transactions} month={month} onRefetch={refetch} toast={toast} rules={rules} onAddRule={addRule} onRemoveRule={removeRule} llmRules={llmRules} onAcceptLlmRule={acceptLlmRule} onRemoveLlmRule={removeLlmRule} onAcceptAllLlmRules={acceptAllLlmRules} />}
+          <div style={{ overflowY: 'auto', paddingBottom: 88 }}>
+            {tab === 'overview'     && <Overview transactions={transactions} month={month} months={months} onMonthChange={setMonth} onNavigate={navigate} {...sharedProps} />}
+            {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} anomalyIds={anomalyIds} {...sharedProps} />}
+            {tab === 'budget'       && <Budget transactions={transactions} month={month} initialSeg={budgetSeg} {...sharedProps} />}
+            {tab === 'trends'       && <Trends transactions={transactions} {...sharedProps} />}
           </div>
         )}
       </Suspense>
 
-      {/* Bottom nav */}
+      {/* Bottom nav — 5 tabs */}
       <div style={{
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 480,
@@ -131,6 +94,8 @@ export default function App() {
         display: 'flex',
         paddingBottom: 'env(safe-area-inset-bottom)',
         backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        zIndex: 10,
       }}>
         {NAV.map(n => (
           <button key={n.id} onClick={() => setTab(n.id)} style={{
@@ -146,31 +111,22 @@ export default function App() {
         ))}
       </div>
 
+      {/* Settings overlay */}
+      {settingsOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, maxWidth: 480, left: '50%', transform: 'translateX(-50%)' }}>
+          <Suspense fallback={null}>
+            <Settings
+              transactions={transactions} month={month} onRefetch={refetch} toast={toast}
+              rules={rules} onAddRule={addRule} onRemoveRule={removeRule}
+              llmRules={llmRules} onAcceptLlmRule={acceptLlmRule}
+              onRemoveLlmRule={removeLlmRule} onAcceptAllLlmRules={acceptAllLlmRules}
+              onClose={() => setSettingsOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>
   )
-}
-
-function isCurrentMonth(m) {
-  const now = new Date()
-  return m === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
-
-function timeSince(date) {
-  const s = Math.floor((Date.now() - date) / 1000)
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-}
-
-function pillStyle(active) {
-  return {
-    flexShrink: 0, padding: '5px 14px', borderRadius: 20,
-    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
-    background: active ? 'var(--accent)' : 'var(--surface)',
-    color: active ? 'var(--accent-fg)' : 'var(--muted)',
-    border: '1px solid var(--border)',
-    transition: 'all 0.15s',
-  }
 }

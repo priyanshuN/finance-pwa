@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       messages: [
         {
           role: 'user',
-          content: `Write a 3-sentence financial digest for an Indian user based on this spending data. Be specific with ₹ amounts. Mention the top spending area, one notable pattern, and one actionable insight. Plain prose only — no headers, no bullet points.\n\n${summary}`,
+          content: `Write a concise financial digest for an Indian user based on this spending data. No title or heading — start directly with content. Use markdown: **bold** for key ₹ amounts and category names. Structure: 1 opening sentence on total spend, then 2–3 bullet points (top category, a notable pattern, one actionable insight). Keep it tight — no waffle.\n\n${summary}`,
         },
       ],
       max_tokens: 250,

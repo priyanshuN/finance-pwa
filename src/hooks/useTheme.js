@@ -8,26 +8,44 @@ export const THEMES = [
   { id: 'black',   label: 'Pure Black',       accent: '#ffffff', bg: '#000000' },
 ]
 
-const KEY = 'finance_theme'
-const DEFAULT = 'indigo'
-const VALID = new Set(THEMES.map(t => t.id))
+const THEME_KEY = 'finance_theme'
+const MODE_KEY  = 'finance_mode'
+const DEFAULT_THEME = 'indigo'
+const VALID_THEMES = new Set(THEMES.map(t => t.id))
+const VALID_MODES  = new Set(['auto', 'dark', 'light'])
 
 export function useTheme() {
   const [theme, setThemeState] = useState(() => {
     try {
-      const saved = localStorage.getItem(KEY)
-      return saved && VALID.has(saved) ? saved : DEFAULT
-    } catch { return DEFAULT }
+      const saved = localStorage.getItem(THEME_KEY)
+      return saved && VALID_THEMES.has(saved) ? saved : DEFAULT_THEME
+    } catch { return DEFAULT_THEME }
+  })
+
+  const [mode, setModeState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(MODE_KEY)
+      return saved && VALID_MODES.has(saved) ? saved : 'auto'
+    } catch { return 'auto' }
   })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    try { localStorage.setItem(KEY, theme) } catch {}
+    try { localStorage.setItem(THEME_KEY, theme) } catch {}
   }, [theme])
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-mode', mode)
+    try { localStorage.setItem(MODE_KEY, mode) } catch {}
+  }, [mode])
+
   const setTheme = useCallback((id) => {
-    if (VALID.has(id)) setThemeState(id)
+    if (VALID_THEMES.has(id)) setThemeState(id)
   }, [])
 
-  return { theme, setTheme, themes: THEMES }
+  const setMode = useCallback((m) => {
+    if (VALID_MODES.has(m)) setModeState(m)
+  }, [])
+
+  return { theme, setTheme, themes: THEMES, mode, setMode }
 }
