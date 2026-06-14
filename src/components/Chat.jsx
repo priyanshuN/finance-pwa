@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useOptimistic, useTransition } from 'react'
 import Markdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { filterByMonth } from '../lib/utils'
@@ -14,6 +14,8 @@ const FOLLOWUPS = [
 
 export default function Chat({ transactions, month, onOpenSettings }) {
   const { messages, loading, error, send, clear } = useChat(transactions, month)
+  const [optimisticMessages, addOptimistic] = useOptimistic(messages)
+  const [, startTransition] = useTransition()
   const [input, setInput] = useState('')
   const endRef = useRef(null)
 
@@ -25,12 +27,15 @@ export default function Chat({ transactions, month, onOpenSettings }) {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [optimisticMessages, loading])
 
   function handleSend(text) {
     const t = (text || input).trim()
     if (!t || loading) return
     setInput('')
+    startTransition(() => {
+      addOptimistic({ role: 'user', content: t })
+    })
     send(t)
   }
 
@@ -62,7 +67,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
 
       {/* Messages */}
       <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 8px' }}>
-        {messages.length === 0 && (
+        {optimisticMessages.length === 0 && (
           <div style={{ paddingTop: 8 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {FOLLOWUPS.map(s => (
@@ -72,7 +77,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
           </div>
         )}
 
-        {messages.map((m, i) => (
+        {optimisticMessages.map((m, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: m.role === 'assistant' ? 9 : 0, justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
             {m.role === 'assistant' && (
               <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--accent)', marginTop: 1 }}>◌</div>
@@ -114,7 +119,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
       </div>
 
       {/* Follow-up suggestions */}
-      {messages.length > 0 && !loading && (
+      {optimisticMessages.length > 0 && !loading && (
         <div style={{ display: 'flex', gap: 8, padding: '4px 16px 8px', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {FOLLOWUPS.map(s => (
             <button key={s} onClick={() => handleSend(s)} style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 18, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Syne, sans-serif' }}>{s}</button>

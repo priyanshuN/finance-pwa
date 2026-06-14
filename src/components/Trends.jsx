@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { getDebits, groupByCategory, formatINR, formatINRFull, CATEGORY_COLORS, getMonths, monthlyByCategory } from '../lib/utils'
 
 const RANGES = ['3M', '6M', '12M', 'All']

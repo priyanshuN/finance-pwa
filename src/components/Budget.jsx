@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   filterByMonth, getDebits, groupByCategory, formatINRFull, formatINR,
   CATEGORY_COLORS, getRecurringDue, dueLabel,

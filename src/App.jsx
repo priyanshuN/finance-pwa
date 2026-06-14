@@ -1,4 +1,4 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react'
 import { useTransactions } from './hooks/useTransactions'
 import { useToast } from './hooks/useToast'
 import { useAliasRules } from './hooks/useAliasRules'
@@ -39,8 +39,8 @@ export default function App() {
   const recurringIds = useMemo(() => transactions ? detectRecurring(transactions) : new Set(), [transactions])
   const anomalyIds   = useMemo(() => transactions ? detectAnomalies(transactions) : new Set(), [transactions])
 
-  const hasRecategorized = React.useRef(false)
-  React.useEffect(() => {
+  const hasRecategorized = useRef(false)
+  useEffect(() => {
     if (!data || hasRecategorized.current) return
     hasRecategorized.current = true
     runRecategorize(data).then(count => {
@@ -48,7 +48,7 @@ export default function App() {
     })
   }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (months.length && !month) setMonth(months[months.length - 1])
   }, [months])
 
@@ -76,7 +76,7 @@ export default function App() {
         {tab === 'chat' ? (
           <Chat transactions={transactions} month={month} {...sharedProps} />
         ) : (
-          <div style={{ overflowY: 'auto', paddingBottom: 88 }}>
+          <div style={{ overflowY: 'auto', paddingBottom: 88, scrollbarWidth: 'none' }}>
             {tab === 'overview'     && <Overview transactions={transactions} month={month} months={months} onMonthChange={setMonth} onNavigate={navigate} {...sharedProps} />}
             {tab === 'transactions' && <Transactions transactions={transactions} month={month} recurringIds={recurringIds} anomalyIds={anomalyIds} {...sharedProps} />}
             {tab === 'budget'       && <Budget transactions={transactions} month={month} initialSeg={budgetSeg} {...sharedProps} />}

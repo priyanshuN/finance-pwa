@@ -1,5 +1,3 @@
-import React from 'react'
-
 export default function EmptyState({ icon = '📭', message, sub }) {
   return (
     <div style={{

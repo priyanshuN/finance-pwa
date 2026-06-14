@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { getRecurringSummary, formatINRFull, formatINR, CATEGORY_COLORS } from '../lib/utils'
 
 export default function Recurring({ transactions }) {

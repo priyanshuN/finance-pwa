@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { filterByMonth, getDebits, getCredits, sumAmount, groupByCategory, formatINRFull } from '../lib/utils'
 
 function buildContext(transactions, month) {
@@ -29,31 +29,31 @@ ${recentLines}`
 
 export function useChat(transactions, month) {
   const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [error, setError] = useState(null)
 
-  async function send(text) {
+  function send(text) {
     const userMsg = { role: 'user', content: text }
     const next = [...messages, userMsg]
     setMessages(next)
-    setLoading(true)
     setError(null)
-    try {
-      const context = buildContext(transactions, month)
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, context }),
-      })
-      const json = await res.json()
-      if (json.error) throw new Error(json.error)
-      setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
-    } catch (err) {
-      setError(err.message)
-      setMessages(prev => prev.slice(0, -1))
-    } finally {
-      setLoading(false)
-    }
+
+    startTransition(async () => {
+      try {
+        const context = buildContext(transactions, month)
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: next, context }),
+        })
+        const json = await res.json()
+        if (json.error) throw new Error(json.error)
+        setMessages(prev => [...prev, { role: 'assistant', content: json.reply }])
+      } catch (err) {
+        setError(err.message)
+        setMessages(prev => prev.slice(0, -1))
+      }
+    })
   }
 
   function clear() {
@@ -61,5 +61,5 @@ export function useChat(transactions, month) {
     setError(null)
   }
 
-  return { messages, loading, error, send, clear }
+  return { messages, loading: isPending, error, send, clear }
 }
