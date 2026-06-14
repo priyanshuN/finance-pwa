@@ -147,6 +147,96 @@ export function detectAnomalies(transactions) {
   return anomalies
 }
 
+export const CATEGORY_EMOJI = {
+  'Food Delivery': '🍕', 'Groceries': '🛒', 'Travel': '🚗',
+  'Travel / Stay': '🏨', 'Shopping': '🛍️', 'Utilities': '⚡',
+  'Housing': '🏠', 'Health': '💊', 'Subscriptions': '📱',
+  'Investment': '📈', 'EMI / Loan': '🏦', 'UPI / Personal': '👤',
+  'Home Services': '🔧', 'Personal Care': '💇', 'Govt / Tax': '📋',
+  'Income / Credit': '💰', 'Transfer': '↔️', 'Cash': '💵',
+}
+
+export function getRecurringDue(transactions) {
+  const now = new Date()
+  const anchorDay = now.getDate()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  const byVendor = {}
+  for (const t of transactions) {
+    if (t.direction !== 'debit') continue
+    ;(byVendor[t.vendor] ||= []).push(t)
+  }
+
+  const out = []
+  for (const [vendor, txns] of Object.entries(byVendor)) {
+    if (new Set(txns.map(t => t.date.slice(0, 7))).size < 2) continue
+    const amts = txns.map(t => t.amount)
+    const avg = amts.reduce((s, a) => s + a, 0) / amts.length
+    if ((Math.max(...amts) - Math.min(...amts)) / avg > 0.2) continue
+
+    const counts = {}
+    for (const t of txns) { const d = +t.date.slice(8, 10); counts[d] = (counts[d] || 0) + 1 }
+    const day = +Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
+
+    const daysUntil = day >= anchorDay ? day - anchorDay : day + (daysInMonth - anchorDay)
+    const nextDate = new Date(now.getFullYear(), now.getMonth(), day)
+    if (nextDate <= now) nextDate.setMonth(nextDate.getMonth() + 1)
+    const nextMonth = nextDate.toLocaleString('default', { month: 'short' })
+
+    const last = [...txns].sort((a, b) => b.date.localeCompare(a.date))[0]
+    const paidThisMonth = txns.some(t => t.date.startsWith(currentMonthKey))
+
+    out.push({
+      vendor, category: last.category, account_type: last.account_type,
+      amount: Math.round(avg), day, daysUntil, nextMonth,
+      nextLabel: `${day} ${nextMonth}`, paidThisMonth, cadence: 'Monthly',
+    })
+  }
+  return out.sort((a, b) => a.daysUntil - b.daysUntil)
+}
+
+export function dueLabel(daysUntil) {
+  if (daysUntil <= 0) return 'Today'
+  if (daysUntil === 1) return 'Tomorrow'
+  return `In ${daysUntil} days`
+}
+
+export function velocity(spent, limit, elapsedFrac) {
+  const usedPct = limit > 0 ? spent / limit : 0
+  const projected = elapsedFrac > 0 ? spent / elapsedFrac : spent
+  let status
+  if (spent > limit) status = 'over'
+  else if (projected > limit * 1.05) status = 'ahead'
+  else if (projected < limit * 0.8) status = 'under'
+  else status = 'ontrack'
+  return { usedPct, projected, status, elapsedPct: elapsedFrac }
+}
+
+export function monthlyByCategory(transactions, monthKeys) {
+  const debits = transactions.filter(t => t.direction === 'debit')
+  const overall = groupByCategory(debits)
+  const stackKeys = overall.slice(0, 5).map(c => c.name)
+
+  const perMonth = monthKeys.map(m => {
+    const md = debits.filter(t => t.date.startsWith(m))
+    const byCat = {}
+    for (const t of md) byCat[t.category] = (byCat[t.category] || 0) + t.amount
+    const segs = stackKeys.map(k => ({ name: k, value: byCat[k] || 0, color: CATEGORY_COLORS[k] || '#a0aec0' }))
+    const otherVal = Object.entries(byCat).filter(([k]) => !stackKeys.includes(k)).reduce((s, [, v]) => s + v, 0)
+    if (otherVal > 0) segs.push({ name: 'Other', value: otherVal, color: '#5b6478' })
+    const total = segs.reduce((s, x) => s + x.value, 0)
+    return { m, label: new Date(m + '-01').toLocaleString('default', { month: 'short' }), total, segs }
+  })
+  return { perMonth, stackKeys }
+}
+
+export function amountBounds(transactions) {
+  const amounts = transactions.map(t => t.amount)
+  if (!amounts.length) return { min: 0, max: 0 }
+  return { min: Math.min(...amounts), max: Math.max(...amounts) }
+}
+
 export function applyAliasRules(transactions, rules) {
   if (!rules.length) return transactions
   return transactions.map(t => {

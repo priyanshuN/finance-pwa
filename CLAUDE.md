@@ -5,10 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Vite dev server (frontend only — API won't work without env vars)
+npm run dev      # Vite on :5173 — proxies /api/* to localhost:3000 (needs vercel dev running)
 npm run build    # Vite production build (JSX only, no TypeScript)
 npm run preview  # Serve the production build locally
-vercel dev       # Full-stack local dev (runs frontend + /api/* serverless functions)
+vercel dev       # Runs API functions on :3000 (run alongside npm run dev for full-stack local)
 ```
 
 ## Architecture

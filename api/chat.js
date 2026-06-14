@@ -18,11 +18,11 @@ export default async function handler(req, res) {
 
     const client = getClient();
     const completion = await client.chat.completions.create({
-      model: 'anthropic/claude-sonnet-4-5',
+      model: 'anthropic/claude-sonnet-4-6',
       messages: [
         {
           role: 'system',
-          content: `You are a helpful personal finance assistant for an Indian user. Answer questions about their spending clearly and concisely. Format all amounts in Indian Rupees (₹). Keep responses brief — 2-4 sentences unless a list is clearly better.\n\nUser's financial data:\n${context}`,
+          content: `You are a helpful personal finance assistant for an Indian user. Answer questions about their spending clearly and concisely. Format all amounts in Indian Rupees (₹). Always use markdown formatting: **bold** for key amounts and vendor names, bullet lists for category breakdowns, inline \`code\` for dates or account names. For month summaries, use a short bullet list of top categories with amounts, then a bold total. Keep responses brief — 2–4 sentences for simple questions, a short structured list for breakdowns or summaries.\n\nUser's financial data:\n${context}`,
         },
         ...messages,
       ],
