@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, useOptimistic, useTransition } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Markdown from 'react-markdown'
-import { useChat } from '../hooks/useChat'
+import remarkGfm from 'remark-gfm'
+import { useAgent } from '../hooks/useAgent'
+import ReasoningPanel from './ReasoningPanel'
 import { filterByMonth } from '../lib/utils'
 
 const FOLLOWUPS = [
@@ -13,9 +15,7 @@ const FOLLOWUPS = [
 ]
 
 export default function Chat({ transactions, month, onOpenSettings }) {
-  const { messages, loading, error, send, clear } = useChat(transactions, month)
-  const [optimisticMessages, addOptimistic] = useOptimistic(messages)
-  const [, startTransition] = useTransition()
+  const { messages, statusLabel, loading, error, send, clear } = useAgent(transactions)
   const [input, setInput] = useState('')
   const endRef = useRef(null)
 
@@ -27,15 +27,12 @@ export default function Chat({ transactions, month, onOpenSettings }) {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [optimisticMessages, loading])
+  }, [messages, loading])
 
   function handleSend(text) {
     const t = (text || input).trim()
     if (!t || loading) return
     setInput('')
-    startTransition(() => {
-      addOptimistic({ role: 'user', content: t })
-    })
     send(t)
   }
 
@@ -67,7 +64,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
 
       {/* Messages */}
       <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 8px' }}>
-        {optimisticMessages.length === 0 && (
+        {messages.length === 0 && !loading && (
           <div style={{ paddingTop: 8 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {FOLLOWUPS.map(s => (
@@ -77,7 +74,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
           </div>
         )}
 
-        {optimisticMessages.map((m, i) => (
+        {messages.map((m, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: m.role === 'assistant' ? 9 : 0, justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
             {m.role === 'assistant' && (
               <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--accent)', marginTop: 1 }}>◌</div>
@@ -91,17 +88,24 @@ export default function Chat({ transactions, month, onOpenSettings }) {
               padding: '10px 14px', fontSize: 13.5, lineHeight: 1.6,
             }}>
               {m.role === 'user' ? m.content : (
-                <div className="chat-md"><Markdown components={{
-                  p:      ({ children }) => <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>{children}</p>,
-                  strong: ({ children }) => <strong style={{ fontWeight: 700, color: 'var(--text)' }}>{children}</strong>,
-                  em:     ({ children }) => <em style={{ fontStyle: 'normal', color: 'var(--muted)' }}>{children}</em>,
-                  ul:     ({ children }) => <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ul>,
-                  ol:     ({ children }) => <ol style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ol>,
-                  li:     ({ children }) => <li style={{ margin: '3px 0', lineHeight: 1.5 }}>{children}</li>,
-                  code:   ({ children }) => <code style={{ background: 'var(--surface2)', borderRadius: 4, padding: '1px 5px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}>{children}</code>,
-                }}>
-                  {m.content}
-                </Markdown></div>
+                <>
+                  <div className="chat-md"><Markdown remarkPlugins={[remarkGfm]} components={{
+                    p:      ({ children }) => <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>{children}</p>,
+                    strong: ({ children }) => <strong style={{ fontWeight: 700, color: 'var(--text)' }}>{children}</strong>,
+                    em:     ({ children }) => <em style={{ fontStyle: 'normal', color: 'var(--muted)' }}>{children}</em>,
+                    ul:     ({ children }) => <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ul>,
+                    ol:     ({ children }) => <ol style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ol>,
+                    li:     ({ children }) => <li style={{ margin: '3px 0', lineHeight: 1.5 }}>{children}</li>,
+                    code:   ({ children }) => <code style={{ background: 'var(--surface2)', borderRadius: 4, padding: '1px 5px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}>{children}</code>,
+                    table:  ({ children }) => <div style={{ overflowX: 'auto', margin: '4px 0 8px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', maskImage: 'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)' }}><table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>{children}</table></div>,
+                    thead:  ({ children }) => <thead>{children}</thead>,
+                    th:     ({ children }) => <th style={{ padding: '5px 10px', textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{children}</th>,
+                    td:     ({ children }) => <td style={{ padding: '4px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text)' }}>{children}</td>,
+                  }}>
+                    {m.content}
+                  </Markdown></div>
+                  {m.steps && m.steps.length > 0 && <ReasoningPanel steps={m.steps} />}
+                </>
               )}
             </div>
           </div>
@@ -110,7 +114,9 @@ export default function Chat({ transactions, month, onOpenSettings }) {
         {loading && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginBottom: 16 }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--accent)' }}>◌</div>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px 16px 16px 5px', padding: '10px 18px', fontSize: 18, color: 'var(--muted)', letterSpacing: 2 }}>···</div>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px 16px 16px 5px', padding: '10px 18px', fontSize: 12, color: 'var(--muted)', fontFamily: 'Syne, sans-serif', minWidth: 120 }}>
+              {statusLabel || '···'}
+            </div>
           </div>
         )}
 
@@ -119,7 +125,7 @@ export default function Chat({ transactions, month, onOpenSettings }) {
       </div>
 
       {/* Follow-up suggestions */}
-      {optimisticMessages.length > 0 && !loading && (
+      {messages.length > 0 && !loading && (
         <div style={{ display: 'flex', gap: 8, padding: '4px 16px 8px', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {FOLLOWUPS.map(s => (
             <button key={s} onClick={() => handleSend(s)} style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 18, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text)', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Syne, sans-serif' }}>{s}</button>
