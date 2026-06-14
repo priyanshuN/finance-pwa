@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { version } from '../../package.json'
 import { useBudget } from '../hooks/useBudget'
 import { useTheme } from '../hooks/useTheme'

@@ -1,5 +1,3 @@
-import React from 'react'
-
 export default function ToastContainer({ toasts, onDismiss }) {
   if (!toasts.length) return null
 

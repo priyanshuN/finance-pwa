@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { filterByMonth, formatDate, formatINRFull, formatINR, CATEGORY_COLORS, CATEGORY_EMOJI, amountBounds } from '../lib/utils'
 
 function monthEyebrow(month) {
@@ -64,7 +64,7 @@ function FilterSheet({ onClose, categories, filters, onApply, totalCount }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', maxWidth: 480, left: '50%', transform: 'translateX(-50%)' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }} />
-      <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: '22px 22px 0 0', padding: '10px 20px 32px', maxHeight: '88vh', overflowY: 'auto' }}>
+      <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: '22px 22px 0 0', padding: '10px 20px 32px', maxHeight: '88vh', overflowY: 'auto', scrollbarWidth: 'none' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--surface2)', margin: '0 auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>Filter & sort</div>
